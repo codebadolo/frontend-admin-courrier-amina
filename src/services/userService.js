@@ -2,23 +2,40 @@ import axios from "axios";
 
 const BASE_URL = "http://localhost:8000/api/users/"; // adapte si besoin
 
-const setAuth = (token) => {
-  if (token) axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-  else delete axios.defaults.headers.common["Authorization"];
+// Applique le token globalement
+export const setAuthToken = (token) => {
+  if (token) {
+    axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  } else {
+    delete axios.defaults.headers.common["Authorization"];
+  }
 };
 
+// ---------------------------------------------
 // AUTH
+// ---------------------------------------------
+
 export const apiLogin = async (email, password) => {
-  const res = await axios.post(`${BASE_URL}auth/login/`, { email, password });
+  const res = await axios.post(`http://localhost:8000/api/auth/login/`, {
+    email,
+    password,
+  });
   return res.data;
 };
+
 export const apiLogout = async (refresh) => {
-  return axios.post(`${BASE_URL}auth/logout/`, { refresh });
+  const res = await axios.post(`http://localhost:8000/api/auth/logout/`, {
+    refresh,
+  });
+  return res.data;
 };
 
+// ---------------------------------------------
 // USERS (CRUD)
+// ---------------------------------------------
+
 export const getUsers = async () => {
-  const res = await axios.get(BASE_URL);
+  const res = await axios.get(`${BASE_URL}users`);
   return res.data;
 };
 
@@ -47,18 +64,24 @@ export const deleteUser = async (id) => {
   return res.data;
 };
 
-// profile / password
+// ---------------------------------------------
+// PROFIL / PASSWORD
+// ---------------------------------------------
+
 export const getProfile = async () => {
-  const res = await axios.get(`${BASE_URL}profile/`);
-  return res.data;
-};
-export const updateProfile = async (payload) => {
-  const res = await axios.put(`${BASE_URL}profile/`, payload);
-  return res.data;
-};
-export const changePassword = async (payload) => {
-  const res = await axios.post(`${BASE_URL}change-password/`, payload);
+  const res = await axios.get(`http://localhost:8000/api/auth/profile/`);
   return res.data;
 };
 
-export { setAuth as setAuthToken };
+export const updateProfile = async (payload) => {
+  const res = await axios.put(`http://localhost:8000/api/auth/profile/`, payload);
+  return res.data;
+};
+
+export const changePassword = async (payload) => {
+  const res = await axios.post(
+    `http://localhost:8000/api/auth/change-password/`,
+    payload
+  );
+  return res.data;
+};

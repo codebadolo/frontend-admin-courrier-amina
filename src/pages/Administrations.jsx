@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useContext } from "react";
+// src/pages/Administrations.jsx
+import React, { useEffect, useState } from "react";
 import { Table, Button, Modal, Form, Input, Select, Space, Popconfirm, notification, Switch } from "antd";
-import { getUsers, createUser, updateUser, deleteUser, partialUpdateUser } from "../services/userService";
-import { AuthContext } from "../contexts/AuthContext";
+import { getUsers, createUser, updateUser, deleteUser, partialUpdateUser } from "../api/auth";
 
 const { Option } = Select;
 
@@ -21,84 +21,84 @@ const Administrations = () => {
   const [openEdit, setOpenEdit] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [form] = Form.useForm();
-  const { user: me } = useContext(AuthContext);
 
-const fetch = async () => {
-  setLoading(true);
-  try {
-    const data = await getUsers();
-    // Assure que data est un tableau
-    setUsers(Array.isArray(data) ? data : []);
-  } catch (err) {
-    notification.error({ message: "Erreur", description: "Impossible de récupérer les utilisateurs" });
-    setUsers([]); // fallback
-  } finally {
-    setLoading(false);
-  }
-};
+  // --- Fetch Users ---
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const data = await getUsers();
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (err) {
+      notification.error({ message: "Erreur", description: err.detail || "Impossible de récupérer les utilisateurs" });
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
-  useEffect(() => { fetch(); }, []);
-
-  // Création
-  const onAdd = async (values) => {
+  // --- Ajouter ---
+  const handleAdd = async (values) => {
     try {
       await createUser(values);
       notification.success({ message: "Utilisateur créé" });
       setOpenAdd(false);
-      fetch();
+      form.resetFields();
+      fetchUsers();
     } catch (err) {
-      notification.error({ message: "Erreur", description: err.detail || "Impossible de créer" });
+      notification.error({ message: "Erreur", description: err.detail || "Impossible de créer l'utilisateur" });
     }
   };
 
-  // Edition
-  const onEdit = async (values) => {
+  // --- Modifier ---
+  const handleEdit = async (values) => {
     try {
       await updateUser(editingUser.id, values);
       notification.success({ message: "Utilisateur modifié" });
       setOpenEdit(false);
       setEditingUser(null);
-      fetch();
+      fetchUsers();
     } catch (err) {
-      notification.error({ message: "Erreur", description: err.detail || "Impossible de modifier" });
+      notification.error({ message: "Erreur", description: err.detail || "Impossible de modifier l'utilisateur" });
     }
   };
 
-  // Suppression
-  const onDelete = async (id) => {
+  // --- Supprimer ---
+  const handleDelete = async (id) => {
     try {
       await deleteUser(id);
       notification.success({ message: "Utilisateur supprimé" });
-      fetch();
+      fetchUsers();
     } catch (err) {
-      notification.error({ message: "Erreur", description: err.detail || "Impossible de supprimer" });
+      notification.error({ message: "Erreur", description: err.detail || "Impossible de supprimer l'utilisateur" });
     }
   };
 
-  // Activer / Désactiver
-  const onToggleActive = async (record) => {
+  // --- Activer / Désactiver ---
+  const handleToggleActive = async (record) => {
     try {
       await partialUpdateUser(record.id, { actif: !record.actif });
       notification.success({ message: `Utilisateur ${!record.actif ? "activé" : "désactivé"}` });
-      fetch();
+      fetchUsers();
     } catch (err) {
       notification.error({ message: "Erreur", description: "Impossible de modifier le statut" });
     }
   };
 
+  // --- Table Columns ---
   const columns = [
-    { title: "Nom", dataIndex: "nom", key: "nom" },
     { title: "Prénom", dataIndex: "prenom", key: "prenom" },
+    { title: "Nom", dataIndex: "nom", key: "nom" },
     { title: "Email", dataIndex: "email", key: "email" },
     { title: "Rôle", dataIndex: "role_display", key: "role_display" },
     {
       title: "Actif",
       dataIndex: "actif",
       key: "actif",
-      render: (actif, record) => (
-        <Switch checked={actif} onChange={() => onToggleActive(record)} />
-      ),
+      render: (actif, record) => <Switch checked={actif} onChange={() => handleToggleActive(record)} />,
     },
     {
       title: "Actions",
@@ -114,8 +114,7 @@ const fetch = async () => {
           >
             Modifier
           </Button>
-
-          <Popconfirm title="Supprimer ?" onConfirm={() => onDelete(record.id)}>
+          <Popconfirm title="Supprimer ?" onConfirm={() => handleDelete(record.id)}>
             <Button danger>Supprimer</Button>
           </Popconfirm>
         </Space>
@@ -135,7 +134,7 @@ const fetch = async () => {
 
       {/* Modal Ajouter */}
       <Modal title="Ajouter utilisateur" open={openAdd} onCancel={() => setOpenAdd(false)} footer={null}>
-        <Form layout="vertical" onFinish={onAdd}>
+        <Form layout="vertical" onFinish={handleAdd} form={form}>
           <Form.Item name="email" label="Email" rules={[{ required: true, type: "email" }]}>
             <Input />
           </Form.Item>
@@ -157,7 +156,6 @@ const fetch = async () => {
           <Form.Item name="password" label="Mot de passe" rules={[{ required: true }]}>
             <Input.Password />
           </Form.Item>
-
           <Form.Item>
             <Space>
               <Button onClick={() => setOpenAdd(false)}>Annuler</Button>
@@ -171,7 +169,7 @@ const fetch = async () => {
 
       {/* Modal Modifier */}
       <Modal title="Modifier utilisateur" open={openEdit} onCancel={() => setOpenEdit(false)} footer={null}>
-        <Form layout="vertical" form={form} onFinish={onEdit}>
+        <Form layout="vertical" form={form} onFinish={handleEdit}>
           <Form.Item name="email" label="Email" rules={[{ required: true, type: "email" }]}>
             <Input />
           </Form.Item>
@@ -190,7 +188,6 @@ const fetch = async () => {
               ))}
             </Select>
           </Form.Item>
-
           <Form.Item>
             <Space>
               <Button onClick={() => setOpenEdit(false)}>Annuler</Button>

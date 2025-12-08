@@ -1,60 +1,80 @@
+// src/services/userService.js
 import axios from "axios";
 
-const API_URL = "http://localhost:8000/api/users/";
+const API_BASE_URL = "http://localhost:8000/api";
+
+// ----------------------------
+// INSTANCE AXIOS
+// ----------------------------
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: { "Content-Type": "application/json" },
+});
 
 // ----------------------------
 // Gestion du Token
 // ----------------------------
-const setAuthToken = (token) => {
+export const setAuthToken = (token) => {
   if (token) {
-    axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
   } else {
-    delete axios.defaults.headers.common["Authorization"];
+    delete api.defaults.headers.common["Authorization"];
   }
 };
 
-// Rafraîchir automatiquement le token expiré
-export const refreshToken = async () => {
-  const refresh = localStorage.getItem("refresh_token");
-  if (!refresh) return;
+// ----------------------------
+// Refresh automatique
+// ----------------------------
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
 
-  try {
-    const res = await axios.post(`${API_URL}auth/refresh/`, { refresh });
-    localStorage.setItem("access_token", res.data.access);
-    setAuthToken(res.data.access);
-  } catch (err) {
-    console.error("Erreur refresh token", err);
-    logout();
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      const refresh = localStorage.getItem("refresh_token");
+      if (!refresh) {
+        logout();
+        return Promise.reject(error);
+      }
+      try {
+        const res = await axios.post(`${API_BASE_URL}/users/auth/refresh/`, { refresh });
+        const newAccess = res.data.access;
+        localStorage.setItem("access_token", newAccess);
+        setAuthToken(newAccess);
+        originalRequest.headers["Authorization"] = `Bearer ${newAccess}`;
+        return api(originalRequest);
+      } catch (err) {
+        logout();
+        return Promise.reject(err);
+      }
+    }
+
+    return Promise.reject(error);
   }
-};
+);
 
 // ----------------------------
 // AUTHENTIFICATION
 // ----------------------------
 export const login = async (email, password) => {
-  try {
-    const response = await axios.post(`${API_URL}auth/login/`, { email, password });
-
-    if (response.data.access) {
-      localStorage.setItem("access_token", response.data.access);
-      localStorage.setItem("refresh_token", response.data.refresh);
-      localStorage.setItem("user", JSON.stringify(response.data.user));
-      setAuthToken(response.data.access);
-    }
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || { detail: "Erreur serveur" };
-  }
+  const res = await api.post("/users/auth/login/", { email, password });
+  localStorage.setItem("access_token", res.data.access);
+  localStorage.setItem("refresh_token", res.data.refresh);
+  localStorage.setItem("user", JSON.stringify(res.data.user));
+  setAuthToken(res.data.access);
+  return res.data;
 };
 
 export const logout = async () => {
   const refresh = localStorage.getItem("refresh_token");
-  try {
-    await axios.post(`${API_URL}auth/logout/`, { refresh });
-  } catch (error) {
-    console.warn("Erreur logout :", error);
+  if (refresh) {
+    try {
+      await api.post("/users/auth/logout/", { refresh });
+    } catch (err) {
+      console.warn("Erreur logout", err);
+    }
   }
-
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
   localStorage.removeItem("user");
@@ -66,92 +86,57 @@ export const getCurrentUser = () => {
 };
 
 // ----------------------------
-// GESTION DES UTILISATEURS (ADMIN)
+// UTILISATEURS (CRUD)
 // ----------------------------
-
-// Liste de tous les utilisateurs (Admin)
 export const getUsers = async () => {
-  try {
-    const res = await axios.get(API_URL);
-    return res.data;
-  } catch (err) {
-    throw err.response?.data || { detail: "Impossible de récupérer les utilisateurs" };
-  }
+  const res = await api.get("/users/");
+  return res.data;
 };
 
-// Détails d’un utilisateur
 export const getUserById = async (id) => {
-  try {
-    const res = await axios.get(`${API_URL}${id}/`);
-    return res.data;
-  } catch (err) {
-    throw err.response?.data || { detail: "Utilisateur introuvable" };
-  }
+  const res = await api.get(`/users/${id}/`);
+  return res.data;
 };
 
-// Créer un utilisateur
-export const createUser = async (userData) => {
-  try {
-    const res = await axios.post(API_URL, userData);
-    return res.data;
-  } catch (err) {
-    throw err.response?.data || { detail: "Erreur lors de la création" };
-  }
+export const createUser = async (data) => {
+  const res = await api.post("/users/", data);
+  return res.data;
 };
 
-// Modifier un utilisateur
-export const updateUser = async (id, userData) => {
-  try {
-    const res = await axios.put(`${API_URL}${id}/`, userData);
-    return res.data;
-  } catch (err) {
-    throw err.response?.data || { detail: "Erreur mise à jour" };
-  }
+export const updateUser = async (id, data) => {
+  const res = await api.put(`/users/${id}/`, data);
+  return res.data;
 };
 
-// Supprimer un utilisateur
+export const partialUpdateUser = async (id, data) => {
+  const res = await api.patch(`/users/${id}/`, data);
+  return res.data;
+};
+
 export const deleteUser = async (id) => {
-  try {
-    const res = await axios.delete(`${API_URL}${id}/`);
-    return res.data;
-  } catch (err) {
-    throw err.response?.data || { detail: "Erreur suppression" };
-  }
+  const res = await api.delete(`/users/${id}/`);
+  return res.data;
 };
 
 // ----------------------------
-// GESTION PROFIL (Utilisateur connecté)
+// PROFIL
 // ----------------------------
-
-// Obtenir son propre profil
 export const getProfile = async () => {
-  try {
-    const res = await axios.get(`${API_URL}profile/`);
-    return res.data;
-  } catch (err) {
-    throw err.response?.data || { detail: "Erreur profil" };
-  }
+  const res = await api.get("/users/profile/");
+  return res.data;
 };
 
-// Mettre à jour son profil
 export const updateProfile = async (data) => {
-  try {
-    const res = await axios.put(`${API_URL}profile/`, data);
-    return res.data;
-  } catch (err) {
-    throw err.response?.data || { detail: "Erreur update profil" };
-  }
+  const res = await api.put("/users/profile/", data);
+  return res.data;
 };
 
-// Changer son mot de passe
 export const changePassword = async (oldPassword, newPassword) => {
-  try {
-    const res = await axios.put(`${API_URL}change-password/`, {
-      old_password: oldPassword,
-      new_password: newPassword,
-    });
-    return res.data;
-  } catch (err) {
-    throw err.response?.data || { detail: "Erreur changement de mot de passe" };
-  }
+  const res = await api.post("/users/change-password/", {
+    old_password: oldPassword,
+    new_password: newPassword,
+  });
+  return res.data;
 };
+
+export default api;
