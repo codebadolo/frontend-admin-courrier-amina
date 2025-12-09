@@ -12,71 +12,48 @@ const api = axios.create({
 });
 
 // ----------------------------
-// Gestion du Token
+// Gestion du Token (AUTHTOKEN)
 // ----------------------------
 export const setAuthToken = (token) => {
   if (token) {
-    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    api.defaults.headers.common["Authorization"] = `Token ${token}`;
   } else {
     delete api.defaults.headers.common["Authorization"];
   }
 };
 
-// ----------------------------
-// Refresh automatique
-// ----------------------------
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      const refresh = localStorage.getItem("refresh_token");
-      if (!refresh) {
-        logout();
-        return Promise.reject(error);
-      }
-      try {
-        const res = await axios.post(`${API_BASE_URL}/users/auth/refresh/`, { refresh });
-        const newAccess = res.data.access;
-        localStorage.setItem("access_token", newAccess);
-        setAuthToken(newAccess);
-        originalRequest.headers["Authorization"] = `Bearer ${newAccess}`;
-        return api(originalRequest);
-      } catch (err) {
-        logout();
-        return Promise.reject(err);
-      }
-    }
-
-    return Promise.reject(error);
-  }
-);
+// Charger automatiquement le token si présent
+const existingToken = localStorage.getItem("auth_token");
+if (existingToken) setAuthToken(existingToken);
 
 // ----------------------------
 // AUTHENTIFICATION
 // ----------------------------
 export const login = async (email, password) => {
-  const res = await api.post("/users/auth/login/", { email, password });
-  localStorage.setItem("access_token", res.data.access);
-  localStorage.setItem("refresh_token", res.data.refresh);
-  localStorage.setItem("user", JSON.stringify(res.data.user));
-  setAuthToken(res.data.access);
+  const res = await api.post("users/auth/login/", { email, password });
+
+  const token = res.data.token;
+  const user = res.data.user;
+
+  // Sauvegarde locale
+  localStorage.setItem("auth_token", token);
+  localStorage.setItem("user", JSON.stringify(user));
+
+  // Activation Auth
+  setAuthToken(token);
+
   return res.data;
 };
 
 export const logout = async () => {
-  const refresh = localStorage.getItem("refresh_token");
-  if (refresh) {
-    try {
-      await api.post("/users/auth/logout/", { refresh });
-    } catch (err) {
-      console.warn("Erreur logout", err);
-    }
+  try {
+    await api.post("/auth/logout/");
+  } catch (err) {
+    console.warn("Erreur logout", err);
   }
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("refresh_token");
+
+  // Suppression locale
+  localStorage.removeItem("auth_token");
   localStorage.removeItem("user");
   setAuthToken(null);
 };
@@ -89,32 +66,32 @@ export const getCurrentUser = () => {
 // UTILISATEURS (CRUD)
 // ----------------------------
 export const getUsers = async () => {
-  const res = await api.get("/users/");
+  const res = await api.get("/users/users/");
   return res.data;
 };
 
 export const getUserById = async (id) => {
-  const res = await api.get(`/users/${id}/`);
+  const res = await api.get(`/users/users/${id}/`);
   return res.data;
 };
 
 export const createUser = async (data) => {
-  const res = await api.post("/users/", data);
+  const res = await api.post("/users/users/", data);
   return res.data;
 };
 
 export const updateUser = async (id, data) => {
-  const res = await api.put(`/users/${id}/`, data);
+  const res = await api.put(`/users/users/${id}/`, data);
   return res.data;
 };
 
 export const partialUpdateUser = async (id, data) => {
-  const res = await api.patch(`/users/${id}/`, data);
+  const res = await api.patch(`/users/users/${id}/`, data);
   return res.data;
 };
 
 export const deleteUser = async (id) => {
-  const res = await api.delete(`/users/${id}/`);
+  const res = await api.delete(`/users/users/${id}/`);
   return res.data;
 };
 
