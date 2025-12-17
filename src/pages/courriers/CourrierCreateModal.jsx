@@ -1,57 +1,37 @@
-import React, { useEffect } from "react";
-import {
-  Modal,
-  Form,
-  Input,
-  Select,
-  DatePicker,
-  Row,
-  Col,
-  Button,
-  notification,
-} from "antd";
+import React, { useState } from "react";
+import { Modal, Form, Input, Upload, Button, message } from "antd";
+import { UploadOutlined } from "@ant-design/icons";
+import axios from "axios";
 
-import { createCourrier } from "../../api/courriers";
-import { getServices } from "../../api/service";
-import { getCategories } from "../../api/categories";
-
-const { Option } = Select;
-
-const CourrierCreateModal = ({ open, onClose, onSuccess }) => {
+const CourrierCreateModal = ({ open, onClose, onSuccess, defaultType }) => {
   const [form] = Form.useForm();
-  const [services, setServices] = React.useState([]);
-  const [categories, setCategories] = React.useState([]);
-  const [loading, setLoading] = React.useState(false);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    getServices().then(setServices);
-    getCategories().then(setCategories);
-  }, []);
+  const handleSubmit = async (values) => {
+    const formData = new FormData();
+    formData.append("file", values.file.file);
+    formData.append("type", defaultType);
+    formData.append("objet", values.objet);
 
-  const onSubmit = async () => {
+    setLoading(true);
     try {
-      const values = await form.validateFields();
-      setLoading(true);
+      await axios.post(
+        "http://localhost:8000/api/courriers/create-with-ocr/",
+        formData,
+        {
+          headers: {
+            Authorization: `Token ${localStorage.getItem("auth_token")}`,
+          },
+        }
+      );
 
-      await createCourrier({
-        ...values,
-        type: "entrant",
-      });
-
-      notification.success({
-        message: "Succès",
-        description: "Courrier enregistré avec succès",
-      });
-
+      message.success("Courrier analysé et enregistré");
       form.resetFields();
       onSuccess();
       onClose();
-    } catch (e) {
-      if (e?.errorFields) return;
-      notification.error({
-        message: "Erreur",
-        description: "Impossible de créer le courrier",
-      });
+    } catch (err) {
+      message.error("Erreur lors du traitement du courrier");
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -60,100 +40,32 @@ const CourrierCreateModal = ({ open, onClose, onSuccess }) => {
   return (
     <Modal
       open={open}
+      title="Nouveau courrier (OCR + IA)"
       onCancel={onClose}
-      title="📩 Nouveau courrier entrant"
-      width={700}
-      footer={[
-        <Button key="cancel" onClick={onClose}>
-          Annuler
-        </Button>,
-        <Button
-          key="submit"
-          type="primary"
-          loading={loading}
-          onClick={onSubmit}
-        >
-          Enregistrer
-        </Button>,
-      ]}
+      onOk={() => form.submit()}
+      confirmLoading={loading}
+      destroyOnClose
     >
-      <Form layout="vertical" form={form}>
-        <Row gutter={12}>
-          <Col span={12}>
-            <Form.Item
-              name="reference"
-              label="Référence"
-              rules={[{ required: true }]}
-            >
-              <Input placeholder="REF-2025-001" />
-            </Form.Item>
-          </Col>
-
-          <Col span={12}>
-            <Form.Item
-              name="date_reception"
-              label="Date de réception"
-              rules={[{ required: true }]}
-            >
-              <DatePicker style={{ width: "100%" }} />
-            </Form.Item>
-          </Col>
-        </Row>
-
+      <Form form={form} layout="vertical" onFinish={handleSubmit}>
         <Form.Item
           name="objet"
           label="Objet"
-          rules={[{ required: true }]}
+          rules={[{ required: true, message: "Objet requis" }]}
         >
-          <Input />
+          <Input placeholder="Objet du courrier" />
         </Form.Item>
 
-        <Row gutter={12}>
-          <Col span={12}>
-            <Form.Item name="expediteur_nom" label="Expéditeur">
-              <Input />
-            </Form.Item>
-          </Col>
-
-          <Col span={12}>
-            <Form.Item name="canal" label="Canal">
-              <Select allowClear>
-                <Option value="physique">Physique</Option>
-                <Option value="email">Email</Option>
-                <Option value="portail">Portail</Option>
-              </Select>
-            </Form.Item>
-          </Col>
-        </Row>
-
-        <Row gutter={12}>
-          <Col span={12}>
-            <Form.Item name="category" label="Catégorie">
-              <Select allowClear>
-                {categories.map((c) => (
-                  <Option key={c.id} value={c.id}>
-                    {c.nom}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-
-          <Col span={12}>
-            <Form.Item name="service_impute" label="Service imputé">
-              <Select allowClear>
-                {services.map((s) => (
-                  <Option key={s.id} value={s.id}>
-                    {s.nom}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-        </Row>
+        <Form.Item
+          name="file"
+          label="Fichier PDF scanné"
+          rules={[{ required: true, message: "PDF requis" }]}
+        >
+          <Upload beforeUpload={() => false} accept=".pdf">
+            <Button icon={<UploadOutlined />}>Choisir un PDF</Button>
+          </Upload>
+        </Form.Item>
       </Form>
     </Modal>
   );
 };
-
 export default CourrierCreateModal;

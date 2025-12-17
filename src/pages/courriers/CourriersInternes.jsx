@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Table, Button, Space, Tag, Typography, message } from "antd";
 import { PlusOutlined, EyeOutlined } from "@ant-design/icons";
 
-import { fetchCourriers } from "../../api/courriers";
+import { getCourriers } from "../../api/courriers";
 import CourrierCreateModal from "./CourrierCreateModal";
 
 const { Title } = Typography;
@@ -18,7 +18,7 @@ const CourriersInternes = () => {
   const loadCourriers = async () => {
     setLoading(true);
     try {
-      const data = await fetchCourriers();
+      const data = await getCourriers();
 
       // Filtrer uniquement les courriers internes
       const internes = data.filter(

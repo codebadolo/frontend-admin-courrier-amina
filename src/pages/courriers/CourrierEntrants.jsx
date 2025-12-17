@@ -16,10 +16,11 @@ import {
   EyeOutlined,
 } from "@ant-design/icons";
 
-import { fetchCourriers } from "../../api/courriers";
+// import { fetchCourriers } from "../../api/courriers";
 import { getServices } from "../../api/service";
 import { getCategories } from "../../api/categories";
 import CourrierCreateModal from "./CourrierCreateModal";
+import {getCourriers} from "../../api/courriers";
 
 const { Option } = Select;
 
@@ -38,26 +39,28 @@ const CourrierEntrants = () => {
     statut: null,
   });
 
-  const fetchCourriers = async () => {
-    try {
-      setLoading(true);
-      const data = await fetchCourriers({
-        type: "entrant",fetchCourriers,
-        search: filters.search,
-        service: filters.service,
-        category: filters.category,
-        statut: filters.statut,
-      });
-      setCourriers(data.results || data);
-    } catch (e) {
-      message.error("Erreur lors du chargement des courriers");
-    } finally {
-      setLoading(false);
-    }
-  };
+ const loadCourriers = async () => {
+  setLoading(true);
+  try {
+    const data = await getCourriers({
+      type: "entrant",
+      search: filters.search,
+      service: filters.service,
+      category: filters.category,
+      statut: filters.statut,
+    });
+
+    setCourriers(data.results || data);
+  } catch (e) {
+    message.error("Erreur lors du chargement des courriers");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
-    fetchCourriers();
+    getCourriers();
   }, [filters]);
 
   useEffect(() => {
@@ -129,7 +132,7 @@ const CourrierEntrants = () => {
         <Space>
           <Button
             icon={<ReloadOutlined />}
-            onClick={fetchCourriers}
+            onClick={getCourriers}
           />
           <Button
             type="primary"
@@ -211,7 +214,7 @@ const CourrierEntrants = () => {
       <CourrierCreateModal
         open={openCreate}
         onClose={() => setOpenCreate(false)}
-        onSuccess={fetchCourriers}
+        onSuccess={getCourriers}
       />
     </Card>
   );
