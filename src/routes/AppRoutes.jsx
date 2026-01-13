@@ -16,6 +16,8 @@ import Services from "../pages/Services";
 import Administrations from "../pages/Administrations";
 import Reports from "../pages/Reports";
 import DashboardAdmin from "../pages/admin/DashboardAdmin"; // Nouvelle importation
+import ImputationDashboard from "../pages/courriers/ImputationDashboard";
+
 // import Profile from "../pages/Profile";
 
 const PrivateRoute = ({ children }) => {
@@ -45,6 +47,9 @@ const AppRoutes = () => {
         <Route path="/administration" element={<Administrations />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/services-admin" element={<Services />} />
+        <Route path="/imputation" element={<ImputationDashboard />} />
+        {/* <Route path="/imputation" element={<ImputationDashboard />} /> */}
+
         {/* <Route path="/mon-profil" element={<Profile />} /> */}
         
         {/* Route spécifique admin */}

@@ -78,6 +78,7 @@ const Sidebar = ({ userRole, collapsed }) => {
           { key: "/courriers-entrants", label: "Courriers Entrants", icon: <InboxOutlined /> },
           { key: "/courriers-sortants", label: "Courriers Sortants", icon: <SendOutlined /> },
           { key: "/courriers-internes", label: "Courriers Internes", icon: <HomeOutlined /> },
+          { key: "/imputation", label: "Imputation", icon: <SwapOutlined /> },
           { key: "/archives", label: "Archives", icon: <FolderOpenOutlined /> },
         ],
       },

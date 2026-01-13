@@ -110,3 +110,89 @@ export const downloadPieceJointe = async (pieceId) => {
   });
   return res.data;
 };
+
+// Ajoutez cette fonction à courrierService.js
+export const analyzeDocument = async (file) => {
+  const formData = new FormData();
+  formData.append('fichier', file);
+
+  const res = await axios.post(`${BASE}courriers/analyze/`, formData, {
+    headers: {
+      ...getAuthHeaders(),
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return res.data;
+};
+
+// // services/courrierService.js - Ajoutez cette fonction
+// export const imputerCourrier = async (courrierId, payload) => {
+//   const res = await axios.post(`${BASE}courriers/${courrierId}/imputer/`, payload, {
+//     headers: getAuthHeaders(),
+//   });
+//   return res.data;
+// };
+
+// Fonction pour récupérer les utilisateurs d'un service
+export const getUsersByService = async (serviceId) => {
+  const res = await axios.get(`http://localhost:8000/api/users/?service=${serviceId}`, {
+    headers: getAuthHeaders(),
+  });
+  return res.data;
+};
+
+// Ajoutez ces fonctions
+export const fetchCourriersEnAttente = async (params = {}) => {
+  try {
+    const res = await axios.get(`${BASE}imputation-dashboard/`, {
+      params,
+      headers: getAuthHeaders(),
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Erreur fetchCourriersEnAttente:", error);
+    throw error;
+  }
+};
+
+export const getImputationStats = async () => {
+  try {
+    const res = await axios.get(`${BASE}imputation-dashboard/statistiques/`, {
+      headers: getAuthHeaders(),
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Erreur getImputationStats:", error);
+    throw error;
+  }
+};
+
+export const imputerCourrierRapide = async (courrierId, serviceId, commentaire = '') => {
+  try {
+    const res = await axios.post(`${BASE}courriers/${courrierId}/imputer_rapide/`, {
+      service_id: serviceId,
+      commentaire: commentaire
+    }, {
+      headers: getAuthHeaders(),
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Erreur imputerCourrierRapide:", error);
+    throw error;
+  }
+};
+
+export const imputerCourrier = async (courrierId, serviceId, commentaire = '') => {
+  try {
+    const res = await axios.post(`${BASE}courriers/${courrierId}/imputer/`, {
+      service_id: serviceId,
+      commentaire: commentaire
+    }, {
+      headers: getAuthHeaders(),
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Erreur imputerCourrier:", error);
+    throw error;
+  }
+};
