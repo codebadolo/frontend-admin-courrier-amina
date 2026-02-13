@@ -1,21 +1,13 @@
+// src/services/courrierService.js
 import axios from "axios";
 
-const BASE = "http://localhost:8000/api/courriers/";
+const API_BASE = "http://localhost:8000/api";
+const COURRIER_URL = "/courriers/courriers/";
+const PIECES_URL = "/courriers/pieces-jointes/";
+const IMPUTATION_DASHBOARD_URL = "/courriers/imputation-dashboard/";
 
-// ⚠️ CORRECTION : Utiliser une clé unique pour le token
-const getAuthHeaders = () => {
-  // Essayer d'abord "auth_token", sinon "token" pour compatibilité
-  const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
-  return token
-    ? { 
-        Authorization: `Token ${token}`,
-        "Content-Type": "application/json"
-      }
-    : {};
-};
-
-// Configuration globale d'axios
-axios.defaults.baseURL = "http://localhost:8000";
+// Configuration globale
+axios.defaults.baseURL = API_BASE;
 
 // Intercepteur pour ajouter le token à toutes les requêtes
 axios.interceptors.request.use(
@@ -26,173 +18,104 @@ axios.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Fonction pour vérifier l'authentification
-export const checkAuth = () => {
-  return localStorage.getItem("auth_token") || localStorage.getItem("token");
-};
+// Vérification authentification
+export const checkAuth = () => !!localStorage.getItem("auth_token") || !!localStorage.getItem("token");
 
+// ==================== COURRIERS ====================
 export const fetchCourriers = async (params = {}) => {
-  try {
-    const res = await axios.get(`${BASE}courriers/`, {
-      params,
-      headers: getAuthHeaders(),
-    });
-    return res.data;
-  } catch (error) {
-    console.error("Erreur fetchCourriers:", error);
-    throw error;
-  }
+  const { data } = await axios.get(COURRIER_URL, { params });
+  return data;
 };
 
 export const getCourrier = async (id) => {
-  const res = await axios.get(`${BASE}courriers/${id}/`, {
-    headers: getAuthHeaders(),
-  });
-  return res.data;
+  const { data } = await axios.get(`${COURRIER_URL}${id}/`);
+  return data;
 };
 
 export const createCourrier = async (payload) => {
-  const res = await axios.post(`${BASE}courriers/`, payload, {
-    headers: getAuthHeaders(),
-  });
-  return res.data;
+  // payload peut être un objet ou FormData
+  const headers = payload instanceof FormData
+    ? { "Content-Type": "multipart/form-data" }
+    : { "Content-Type": "application/json" };
+  const { data } = await axios.post(COURRIER_URL, payload, { headers });
+  return data;
 };
 
 export const updateCourrier = async (id, payload) => {
-  const res = await axios.patch(`${BASE}courriers/${id}/`, payload, {
-    headers: getAuthHeaders(),
-  });
-  return res.data;
+  const { data } = await axios.patch(`${COURRIER_URL}${id}/`, payload);
+  return data;
 };
 
 export const deleteCourrier = async (id) => {
-  const res = await axios.delete(`${BASE}courriers/${id}/`, {
-    headers: getAuthHeaders(),
-  });
-  return res.data;
+  const { data } = await axios.delete(`${COURRIER_URL}${id}/`);
+  return data;
 };
 
-// Fonction spécifique pour courriers entrants
-export const createCourrierEntrant = async (payload) => {
-  const res = await axios.post(`${BASE}courriers/`, {
-    ...payload,
-    type: "entrant"
-  }, {
-    headers: getAuthHeaders(),
-  });
-  return res.data;
-};
-
-// Ajoutez ces fonctions à votre courrierService.js
-export const getCourrierDetail = async (id) => {
-  const res = await axios.get(`${BASE}courriers/${id}/`, {
-    headers: getAuthHeaders(),
-  });
-  return res.data;
-};
+// ==================== DÉTAIL & PIÈCES JOINTES ====================
+export const getCourrierDetail = async (id) => getCourrier(id);
 
 export const getPiecesJointes = async (courrierId) => {
-  const res = await axios.get(`${BASE}pieces-jointes/?courrier_id=${courrierId}`, {
-    headers: getAuthHeaders(),
-  });
-  return res.data;
+  const { data } = await axios.get(PIECES_URL, { params: { courrier_id: courrierId } });
+  return data;
 };
 
 export const downloadPieceJointe = async (pieceId) => {
-  const res = await axios.get(`${BASE}pieces-jointes/${pieceId}/`, {
-    headers: getAuthHeaders(),
-    responseType: 'blob'
-  });
-  return res.data;
+  const { data } = await axios.get(`${PIECES_URL}${pieceId}/`, { responseType: 'blob' });
+  return data;
 };
 
-// Ajoutez cette fonction à courrierService.js
-export const analyzeDocument = async (file) => {
+// ==================== ANALYSE IA ====================
+export const analyzeDocument = async (file, additionalData = {}) => {
   const formData = new FormData();
-  formData.append('fichier', file);
-
-  const res = await axios.post(`${BASE}courriers/analyze/`, formData, {
-    headers: {
-      ...getAuthHeaders(),
-      'Content-Type': 'multipart/form-data',
-    },
+  formData.append("pieces_jointes", file);
+  Object.keys(additionalData).forEach(key => {
+    formData.append(key, additionalData[key]);
   });
-  return res.data;
+  const { data } = await axios.post(`${COURRIER_URL}analyze_ai/`, formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  });
+  return data;
 };
 
-// // services/courrierService.js - Ajoutez cette fonction
-// export const imputerCourrier = async (courrierId, payload) => {
-//   const res = await axios.post(`${BASE}courriers/${courrierId}/imputer/`, payload, {
-//     headers: getAuthHeaders(),
-//   });
-//   return res.data;
-// };
-
-// Fonction pour récupérer les utilisateurs d'un service
-export const getUsersByService = async (serviceId) => {
-  const res = await axios.get(`http://localhost:8000/api/users/?service=${serviceId}`, {
-    headers: getAuthHeaders(),
-  });
-  return res.data;
-};
-
-// Ajoutez ces fonctions
+// ==================== IMPUTATION ====================
 export const fetchCourriersEnAttente = async (params = {}) => {
-  try {
-    const res = await axios.get(`${BASE}imputation-dashboard/`, {
-      params,
-      headers: getAuthHeaders(),
-    });
-    return res.data;
-  } catch (error) {
-    console.error("Erreur fetchCourriersEnAttente:", error);
-    throw error;
-  }
+  const { data } = await axios.get(IMPUTATION_DASHBOARD_URL, { params });
+  return data;
 };
 
 export const getImputationStats = async () => {
-  try {
-    const res = await axios.get(`${BASE}imputation-dashboard/statistiques/`, {
-      headers: getAuthHeaders(),
-    });
-    return res.data;
-  } catch (error) {
-    console.error("Erreur getImputationStats:", error);
-    throw error;
-  }
-};
-
-export const imputerCourrierRapide = async (courrierId, serviceId, commentaire = '') => {
-  try {
-    const res = await axios.post(`${BASE}courriers/${courrierId}/imputer_rapide/`, {
-      service_id: serviceId,
-      commentaire: commentaire
-    }, {
-      headers: getAuthHeaders(),
-    });
-    return res.data;
-  } catch (error) {
-    console.error("Erreur imputerCourrierRapide:", error);
-    throw error;
-  }
+  const { data } = await axios.get(`${IMPUTATION_DASHBOARD_URL}statistiques/`);
+  return data;
 };
 
 export const imputerCourrier = async (courrierId, serviceId, commentaire = '') => {
-  try {
-    const res = await axios.post(`${BASE}courriers/${courrierId}/imputer/`, {
-      service_id: serviceId,
-      commentaire: commentaire
-    }, {
-      headers: getAuthHeaders(),
-    });
-    return res.data;
-  } catch (error) {
-    console.error("Erreur imputerCourrier:", error);
-    throw error;
-  }
+  const { data } = await axios.post(`${COURRIER_URL}${courrierId}/imputer/`, {
+    service_id: serviceId,
+    commentaire
+  });
+  return data;
+};
+
+export const imputerCourrierRapide = async (courrierId, serviceId, commentaire = '') => {
+  const { data } = await axios.post(`${COURRIER_URL}${courrierId}/imputer_rapide/`, {
+    service_id: serviceId,
+    commentaire
+  });
+  return data;
+};
+
+// ==================== UTILITAIRES ====================
+export const getUsersByService = async (serviceId) => {
+  const { data } = await axios.get(`/users/`, { params: { service: serviceId } });
+  return data;
+};
+
+export const generateCourrierPDF = async (id) => {
+  const { data } = await axios.get(`${COURRIER_URL}${id}/export_pdf/`, {
+    responseType: 'blob'
+  });
+  return data;
 };

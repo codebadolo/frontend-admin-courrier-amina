@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import {
   Table, Button, Space, Modal, Form, Input, Upload,
-  DatePicker, Select, message, Spin, Card, Tag, Popconfirm
+  DatePicker, Select, message, Spin, Card, Tag, Row, Col, Badge, Descriptions, Tooltip
 } from "antd";
 import {
-  PlusOutlined, ReloadOutlined, UploadOutlined,
-  EyeFilled, EditFilled, DeleteFilled
+  PlusOutlined, ReloadOutlined, UploadOutlined, SearchOutlined,
+  EyeOutlined, EditOutlined, DeleteOutlined, FilterOutlined,
+  SendOutlined, FileTextOutlined, MailOutlined, PhoneOutlined,
+  EnvironmentOutlined, ClockCircleOutlined, TeamOutlined, UserOutlined
 } from "@ant-design/icons";
 import { getServices } from "../../api/service";
 import { getCategories } from "../../api/categories";
@@ -19,30 +21,83 @@ import {
 import dayjs from "dayjs";
 
 const { Option } = Select;
+const { TextArea } = Input;
 
 const CourriersSortants = () => {
   const [courriers, setCourriers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [openModal, setOpenModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
   const [form] = Form.useForm();
+  const [searchText, setSearchText] = useState("");
+  const [filters, setFilters] = useState({
+    service: null,
+    category: null,
+    priorite: null,
+    statut: null,
+  });
+
+  // Fonction pour récupérer le nom de la catégorie
+  const getCategorieName = (categoryData) => {
+    if (!categoryData) return null;
+    
+    // Si c'est un objet avec 'name'
+    if (typeof categoryData === 'object' && categoryData.name) {
+      return categoryData.name;
+    }
+    
+    // Si c'est un objet avec 'nom'
+    if (typeof categoryData === 'object' && categoryData.nom) {
+      return categoryData.nom;
+    }
+    
+    // Si c'est un ID (nombre ou chaîne)
+    if (typeof categoryData === 'number' || typeof categoryData === 'string') {
+      const categorie = categories.find(c => c.name === Number(categoryData));
+      return categorie ? categorie.nom : null;
+    }
+    
+    return null;
+  };
+
+  // Fonction pour récupérer le nom du service
+  const getServiceName = (serviceData) => {
+    if (!serviceData) return null;
+    
+    if (typeof serviceData === 'object' && serviceData.nom) {
+      return serviceData.nom;
+    }
+    
+    if (typeof serviceData === 'number' || typeof serviceData === 'string') {
+      const service = services.find(s => s.id === Number(serviceData));
+      return service ? service.nom : null;
+    }
+    
+    return null;
+  };
 
   /* =======================
-     LOAD COURRIERS SORTANTS
+     CHARGEMENT DES DONNÉES
   ======================= */
   const loadCourriers = async () => {
     setLoading(true);
     try {
-      // Utiliser l'endpoint générique avec le paramètre type=sortant
-      const data = await fetchCourriers({ type: "sortant" });
+      const params = {
+        type: "sortant",
+        search: searchText,
+        ...filters
+      };
+      
+      const data = await fetchCourriers(params);
       setCourriers(data.results || data);
     } catch (error) {
+      console.error("Erreur:", error);
       if (error.response?.status === 401) {
         message.error("Session expirée. Veuillez vous reconnecter");
       } else {
-        message.error("Erreur lors du chargement des courriers sortants");
+        message.error("Erreur lors du chargement des courriers");
       }
     } finally {
       setLoading(false);
@@ -50,225 +105,420 @@ const CourriersSortants = () => {
   };
 
   useEffect(() => {
-    // Vérifier l'authentification
     if (!checkAuth()) {
       message.error("Veuillez vous connecter");
-      // window.location.href = "/login";
     }
     
     loadCourriers();
-    getServices().then(setServices);
-    getCategories().then(setCategories);
-  }, []);
+    
+    // Charger services et catégories
+    const loadReferences = async () => {
+      try {
+        const [servicesData, categoriesData] = await Promise.all([
+          getServices(),
+          getCategories()
+        ]);
+        setServices(servicesData);
+        setCategories(categoriesData);
+      } catch (error) {
+        console.error("Erreur chargement références:", error);
+      }
+    };
+    
+    loadReferences();
+  }, [filters]);
 
   /* =======================
-     CREATE / UPDATE
+     CRÉATION / MODIFICATION
   ======================= */
-  const handleCreate = async (values) => {
+  const handleSaveCourrier = async (values) => {
     try {
       setLoading(true);
 
       const payload = {
         objet: values.objet,
         destinataire_nom: values.destinataire_nom,
-        destinataire_adresse: values.destinataire_adresse,
-        destinataire_email: values.destinataire_email,
+        destinataire_adresse: values.destinataire_adresse || "",
+        destinataire_email: values.destinataire_email || "",
         date_envoi: values.date_envoi.format("YYYY-MM-DD"),
         canal: values.canal,
         confidentialite: values.confidentialite,
         type: "sortant",
         category: values.category,
         service_impute: values.service_id,
-        priorite: values.priorite || "normale",
+        priorite: values.priorite,
+        contenu_texte: values.contenu_texte || "",
       };
 
       if (editingId) {
-        // UPDATE - utiliser le service updateCourrier
         await updateCourrier(editingId, payload);
         message.success("Courrier modifié avec succès");
       } else {
-        // CREATE - utiliser le service createCourrier
         await createCourrier(payload);
         message.success("Courrier créé avec succès");
       }
 
-      setOpen(false);
+      setOpenModal(false);
       setEditingId(null);
       form.resetFields();
       loadCourriers();
     } catch (error) {
       console.error("Erreur opération:", error);
-      if (error.response?.status === 401) {
-        message.error("Session expirée. Veuillez vous reconnecter");
-      } else if (error.response?.data) {
-        message.error(error.response.data.detail || "Erreur lors de l'opération");
-      } else {
-        message.error("Erreur lors de l'opération");
-      }
+      const errorMsg = error.response?.data?.detail || 
+                      error.response?.data?.message || 
+                      "Erreur lors de l'opération";
+      message.error(errorMsg);
     } finally {
       setLoading(false);
     }
   };
 
   /* =======================
-     DELETE
+     SUPPRESSION
   ======================= */
   const handleDelete = async (id) => {
     Modal.confirm({
       title: "Confirmer la suppression",
-      content: "Voulez-vous vraiment supprimer ce courrier ?",
-      okText: "Oui",
-      cancelText: "Non",
+      content: "Voulez-vous vraiment supprimer ce courrier ? Cette action est irréversible.",
+      okText: "Oui, supprimer",
+      cancelText: "Annuler",
+      okType: "danger",
+      maskClosable: true,
       onOk: async () => {
         try {
           await deleteCourrier(id);
-          message.success("Courrier supprimé");
+          message.success("Courrier supprimé avec succès");
           loadCourriers();
         } catch (error) {
-          if (error.response?.status === 401) {
-            message.error("Session expirée");
-          } else {
-            message.error("Erreur lors de la suppression");
-          }
+          message.error("Erreur lors de la suppression");
         }
       },
     });
   };
 
   /* =======================
-     VIEW DETAILS
+     VISUALISATION DÉTAILLÉE
   ======================= */
   const handleView = (courrier) => {
+    const categorieName = getCategorieName(courrier.category);
+    const serviceName = getServiceName(courrier.service_impute);
+    
     Modal.info({
-      title: "Détails du courrier sortant",
-      width: 700,
+      title: (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <SendOutlined />
+          <span>Détails du courrier sortant</span>
+          <Tag color="blue">{courrier.reference}</Tag>
+        </div>
+      ),
+      width: 800,
+      maskClosable: true,
       content: (
         <div style={{ marginTop: 20 }}>
-          <p><b>Référence :</b> {courrier.reference}</p>
-          <p><b>Objet :</b> {courrier.objet}</p>
-          <p><b>Destinataire :</b> {courrier.destinataire_nom}</p>
-          <p><b>Adresse :</b> {courrier.destinataire_adresse || "Non renseignée"}</p>
-          <p><b>Email :</b> {courrier.destinataire_email || "Non renseigné"}</p>
-          <p><b>Date d'envoi :</b> {courrier.date_envoi}</p>
-          <p><b>Canal :</b> {courrier.canal}</p>
-          <p><b>Confidentialité :</b> {courrier.confidentialite}</p>
-          <p><b>Priorité :</b> {courrier.priorite}</p>
-          <p><b>Service imputé :</b> {courrier.service_impute?.nom || "Non imputé"}</p>
-          <p><b>Catégorie :</b> {courrier.category?.name || "Non classé"}</p>
-          <p><b>Statut :</b> {courrier.statut}</p>
+          <Card size="small" style={{ marginBottom: 16 }}>
+            <h4 style={{ marginBottom: 16, color: '#1890ff' }}>{courrier.objet}</h4>
+            
+            <Row gutter={16}>
+              <Col span={12}>
+                <Descriptions column={1} size="small">
+                  <Descriptions.Item label={<><UserOutlined /> Destinataire</>}>
+                    <b>{courrier.destinataire_nom}</b>
+                  </Descriptions.Item>
+                  {courrier.destinataire_email && (
+                    <Descriptions.Item label={<><MailOutlined /> Email</>}>
+                      <a href={`mailto:${courrier.destinataire_email}`}>
+                        {courrier.destinataire_email}
+                      </a>
+                    </Descriptions.Item>
+                  )}
+                  {courrier.destinataire_telephone && (
+                    <Descriptions.Item label={<><PhoneOutlined /> Téléphone</>}>
+                      {courrier.destinataire_telephone}
+                    </Descriptions.Item>
+                  )}
+                </Descriptions>
+              </Col>
+              
+              <Col span={12}>
+                <Descriptions column={1} size="small">
+                  <Descriptions.Item label={<><ClockCircleOutlined /> Date envoi</>}>
+                    {dayjs(courrier.date_envoi).format('DD/MM/YYYY')}
+                  </Descriptions.Item>
+                  <Descriptions.Item label={<><TeamOutlined /> Service</>}>
+                    <Tag color="green">{serviceName || "Non imputé"}</Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Catégorie">
+                    <Tag color="blue">{categorieName || "Non classé"}</Tag>
+                  </Descriptions.Item>
+                </Descriptions>
+              </Col>
+            </Row>
+            
+            {courrier.destinataire_adresse && (
+              <div style={{ marginTop: 16 }}>
+                <h5><EnvironmentOutlined /> Adresse</h5>
+                <p style={{ margin: 0 }}>{courrier.destinataire_adresse}</p>
+              </div>
+            )}
+            
+            {courrier.contenu_texte && (
+              <div style={{ marginTop: 16 }}>
+                <h5><FileTextOutlined /> Contenu</h5>
+                <div style={{ 
+                  padding: 12, 
+                  backgroundColor: '#fafafa', 
+                  borderRadius: 4,
+                  maxHeight: 200,
+                  overflowY: 'auto'
+                }}>
+                  {courrier.contenu_texte}
+                </div>
+              </div>
+            )}
+            
+            <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Tag color={
+                courrier.priorite === 'urgente' ? 'red' :
+                courrier.priorite === 'haute' ? 'orange' :
+                courrier.priorite === 'normale' ? 'blue' : 'green'
+              }>
+                Priorité: {courrier.priorite}
+              </Tag>
+              <Tag color={
+                courrier.statut === 'envoye' ? 'green' :
+                courrier.statut === 'en_cours' ? 'blue' :
+                courrier.statut === 'brouillon' ? 'gray' : 'orange'
+              }>
+                Statut: {courrier.statut}
+              </Tag>
+              <Tag color="purple">Canal: {courrier.canal}</Tag>
+              <Tag color={
+                courrier.confidentialite === 'confidentielle' ? 'red' :
+                courrier.confidentialite === 'restreinte' ? 'orange' : 'blue'
+              }>
+                {courrier.confidentialite}
+              </Tag>
+            </div>
+          </Card>
         </div>
       ),
     });
   };
 
   /* =======================
-     EDIT COURRIER
+     MODIFICATION
   ======================= */
   const handleEdit = (courrier) => {
     setEditingId(courrier.id);
-    setOpen(true);
+    setOpenModal(true);
     
     form.setFieldsValue({
       objet: courrier.objet,
       destinataire_nom: courrier.destinataire_nom,
       destinataire_adresse: courrier.destinataire_adresse,
       destinataire_email: courrier.destinataire_email,
+      destinataire_telephone: courrier.destinataire_telephone,
       date_envoi: courrier.date_envoi ? dayjs(courrier.date_envoi) : null,
       canal: courrier.canal,
       confidentialite: courrier.confidentialite,
       priorite: courrier.priorite,
-      category: courrier.category?.id,
-      service_id: courrier.service_impute?.id,
+      category: courrier.category?.id || courrier.category,
+      service_id: courrier.service_impute?.id || courrier.service_impute,
+      contenu_texte: courrier.contenu_texte || "",
     });
   };
 
   /* =======================
-     COLUMNS
+     COLONNES DU TABLEAU
   ======================= */
   const columns = [
     {
       title: "Référence",
       dataIndex: "reference",
-      render: (v) => <b>{v}</b>,
+      render: (reference) => (
+        <Tag color="blue" style={{ fontWeight: 500 }}>
+          {reference}
+        </Tag>
+      ),
       sorter: (a, b) => a.reference.localeCompare(b.reference),
+      width: 120,
     },
     {
       title: "Objet",
       dataIndex: "objet",
       ellipsis: true,
+      render: (objet, record) => (
+        <div>
+          <div style={{ fontWeight: 500 }}>{objet}</div>
+          <div style={{ fontSize: '12px', color: '#666' }}>
+            {record.destinataire_nom}
+            {record.destinataire_email && ` • ${record.destinataire_email}`}
+          </div>
+        </div>
+      ),
     },
     {
-      title: "Destinataire",
-      dataIndex: "destinataire_nom",
+      title: "Catégorie",
+      render: (_, record) => {
+        const categorieName = getCategorieName(record.category);
+        return (
+          <Tag color="blue">
+            {categorieName || "Non classé"}
+          </Tag>
+        );
+      },
+      width: 150,
+      filters: categories.map(cat => ({ text: cat.nom, value: cat.id })),
+      onFilter: (value, record) => {
+        const categorieId = record.category?.id || record.category;
+        return categorieId === value;
+      },
+    },
+    {
+      title: "Service",
+      render: (_, record) => {
+        const serviceName = getServiceName(record.service_impute);
+        return (
+          <Tag color="green">
+            {serviceName || "Non imputé"}
+          </Tag>
+        );
+      },
+      width: 150,
+      filters: services.map(service => ({ text: service.nom, value: service.id })),
+      onFilter: (value, record) => {
+        const serviceId = record.service_impute?.id || record.service_impute;
+        return serviceId === value;
+      },
     },
     {
       title: "Priorité",
       dataIndex: "priorite",
-      render: (v) => {
-        const colors = {
-          urgente: "red",
-          haute: "orange",
-          normale: "blue",
-          basse: "green"
+      render: (priorite) => {
+        const config = {
+          urgente: { color: 'red', icon: '🔥' },
+          haute: { color: 'orange', icon: '⚠️' },
+          normale: { color: 'blue', icon: '📄' },
+          basse: { color: 'green', icon: '📋' }
         };
-        return <Tag color={colors[v] || "default"}>{v}</Tag>;
+        const cfg = config[priorite] || config.normale;
+        return (
+          <Tag color={cfg.color}>
+            {cfg.icon} {priorite}
+          </Tag>
+        );
       },
+      width: 120,
+      filters: [
+        { text: 'Urgente', value: 'urgente' },
+        { text: 'Haute', value: 'haute' },
+        { text: 'Normale', value: 'normale' },
+        { text: 'Basse', value: 'basse' }
+      ],
+      onFilter: (value, record) => record.priorite === value,
     },
     {
-      title: "Date d'envoi",
+      title: "Date envoi",
       dataIndex: "date_envoi",
+      render: (date) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <ClockCircleOutlined style={{ color: '#666' }} />
+          {dayjs(date).format('DD/MM/YYYY')}
+        </div>
+      ),
       sorter: (a, b) => new Date(a.date_envoi) - new Date(b.date_envoi),
+      width: 130,
     },
     {
       title: "Statut",
       dataIndex: "statut",
-      render: (v) => <Tag color={
-        v === "repondu" ? "success" : 
-        v === "traitement" ? "processing" : 
-        v === "impute" ? "warning" : "default"
-      }>{v}</Tag>,
+      render: (statut) => {
+        const config = {
+          envoye: { color: 'success', text: 'Envoyé' },
+          en_cours: { color: 'processing', text: 'En cours' },
+          brouillon: { color: 'default', text: 'Brouillon' },
+          annule: { color: 'error', text: 'Annulé' }
+        };
+        const cfg = config[statut] || { color: 'default', text: statut };
+        return <Tag color={cfg.color}>{cfg.text}</Tag>;
+      },
+      width: 120,
+      filters: [
+        { text: 'Envoyé', value: 'envoye' },
+        { text: 'En cours', value: 'en_cours' },
+        { text: 'Brouillon', value: 'brouillon' },
+        { text: 'Annulé', value: 'annule' }
+      ],
+      onFilter: (value, record) => record.statut === value,
     },
     {
       title: "Actions",
-      align: "center",
+      key: "actions",
+      width: 120,
+      fixed: 'right',
       render: (_, record) => (
-        <Space size="middle">
-          <EyeFilled
-            style={{ color: "#1677ff", fontSize: 18, cursor: "pointer" }}
-            onClick={() => handleView(record)}
-          />
-          <EditFilled
-            style={{ color: "#52c41a", fontSize: 18, cursor: "pointer" }}
-            onClick={() => handleEdit(record)}
-          />
-          <DeleteFilled
-            style={{ color: "#ff4d4f", fontSize: 18, cursor: "pointer" }}
-            onClick={() => handleDelete(record.id)}
-          />
+        <Space size="small">
+          <Tooltip title="Voir détails">
+            <Button
+              size="small"
+              type="text"
+              icon={<EyeOutlined />}
+              onClick={() => handleView(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Modifier">
+            <Button
+              size="small"
+              type="text"
+              icon={<EditOutlined />}
+              onClick={() => handleEdit(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Supprimer">
+            <Button
+              size="small"
+              type="text"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record.id)}
+            />
+          </Tooltip>
         </Space>
       ),
     },
   ];
 
   /* =======================
-     RENDER
+     RENDU PRINCIPAL
   ======================= */
   return (
     <Card
-      title="Courriers sortants"
+      title={
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <SendOutlined />
+          <span>Courriers sortants</span>
+          <Badge 
+            count={courriers.length} 
+            style={{ backgroundColor: '#1890ff', marginLeft: 8 }}
+            showZero 
+          />
+        </div>
+      }
       extra={
         <Space>
           <Button 
             icon={<ReloadOutlined />} 
             onClick={loadCourriers}
             disabled={loading}
-          />
+          >
+            Actualiser
+          </Button>
           <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => {
               setEditingId(null);
-              setOpen(true);
+              setOpenModal(true);
               form.resetFields();
             }}
           >
@@ -277,27 +527,72 @@ const CourriersSortants = () => {
         </Space>
       }
     >
-      {/* FILTRES RAPIDES */}
-      <Space style={{ marginBottom: 16 }} wrap>
-        <Button 
-          onClick={() => {
-            // Filtrer les urgents
-            loadCourriers();
-          }}
-        >
-          Tous
-        </Button>
-        <Button 
-          onClick={() => {
-            // Filtrer par urgence
-          }}
-        >
-          Urgents
-        </Button>
-      </Space>
+      {/* BARRE DE FILTRES */}
+      <Card size="small" style={{ marginBottom: 16 }}>
+        <Row gutter={[16, 16]} align="middle">
+          <Col flex="auto">
+            <Input.Search
+              placeholder="Rechercher par objet, référence, destinataire..."
+              allowClear
+              enterButton={<SearchOutlined />}
+              onSearch={(value) => {
+                setSearchText(value);
+                loadCourriers();
+              }}
+              style={{ width: 400 }}
+            />
+          </Col>
+          <Col>
+            <Space wrap>
+              <Select
+                placeholder="Filtrer par catégorie"
+                allowClear
+                style={{ width: 180 }}
+                onChange={(value) => setFilters({...filters, category: value})}
+                loading={categories.length === 0}
+              >
+                {categories.map(c => (
+                  <Option key={c.name} value={c.name}>{c.nom}</Option>
+                ))}
+              </Select>
+              <Select
+                placeholder="Filtrer par service"
+                allowClear
+                style={{ width: 180 }}
+                onChange={(value) => setFilters({...filters, service: value})}
+                loading={services.length === 0}
+              >
+                {services.map(s => (
+                  <Option key={s.id} value={s.id}>{s.nom}</Option>
+                ))}
+              </Select>
+              <Select
+                placeholder="Filtrer par priorité"
+                allowClear
+                style={{ width: 150 }}
+                onChange={(value) => setFilters({...filters, priorite: value})}
+              >
+                <Option value="urgente">Urgente</Option>
+                <Option value="haute">Haute</Option>
+                <Option value="normale">Normale</Option>
+                <Option value="basse">Basse</Option>
+              </Select>
+              <Button
+                icon={<FilterOutlined />}
+                onClick={() => {
+                  setFilters({ service: null, category: null, priorite: null, statut: null });
+                  setSearchText("");
+                }}
+              >
+                Réinitialiser
+              </Button>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
 
-      {/* TABLE */}
-      <Spin spinning={loading}>
+      {/* TABLEAU DES COURRIERS */}
+      <Spin spinning={loading} tip="Chargement des courriers...">
         <Table
           rowKey="id"
           columns={columns}
@@ -305,139 +600,202 @@ const CourriersSortants = () => {
           pagination={{ 
             pageSize: 10, 
             showSizeChanger: true,
-            showTotal: (total) => `Total ${total} courriers`
+            showTotal: (total) => `Total: ${total} courriers`,
+            showQuickJumper: true
           }}
+          scroll={{ x: 1300 }}
+          locale={{ emptyText: "Aucun courrier sortant trouvé" }}
         />
       </Spin>
 
-      {/* MODAL CREATION/EDITION */}
+      {/* MODAL DE CRÉATION/MODIFICATION */}
       <Modal
-        title={editingId ? "Modifier courrier sortant" : "Nouveau courrier sortant"}
-        open={open}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {editingId ? <EditOutlined /> : <PlusOutlined />}
+            <span>{editingId ? 'Modifier le courrier' : 'Nouveau courrier sortant'}</span>
+          </div>
+        }
+        open={openModal}
         onCancel={() => {
-          setOpen(false);
+          setOpenModal(false);
           setEditingId(null);
           form.resetFields();
         }}
         footer={null}
+        width={800}
         destroyOnClose
-        width={700}
       >
         <Form
           layout="vertical"
           form={form}
-          onFinish={handleCreate}
+          onFinish={handleSaveCourrier}
           initialValues={{
             canal: "email",
             confidentialite: "normale",
             priorite: "normale"
           }}
         >
-          <Form.Item
-            name="objet"
-            label="Objet"
-            rules={[{ required: true, message: "L'objet est obligatoire" }]}
-          >
-            <Input placeholder="Objet du courrier" />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="objet"
+                label="Objet du courrier"
+                rules={[{ required: true, message: "L'objet est obligatoire" }]}
+              >
+                <Input placeholder="Saisir l'objet du courrier" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="destinataire_nom"
+                label="Nom du destinataire"
+                rules={[{ required: true, message: "Le destinataire est obligatoire" }]}
+              >
+                <Input placeholder="Nom complet du destinataire" />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item
-            name="destinataire_nom"
-            label="Destinataire"
-            rules={[{ required: true, message: "Le destinataire est obligatoire" }]}
-          >
-            <Input placeholder="Nom du destinataire" />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="destinataire_email"
+                label="Email du destinataire"
+                rules={[{ type: 'email', message: "Format d'email invalide" }]}
+              >
+                <Input placeholder="email@exemple.com" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="destinataire_telephone"
+                label="Téléphone"
+              >
+                <Input placeholder="+226 XX XX XX XX" />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item
             name="destinataire_adresse"
-            label="Adresse du destinataire"
+            label="Adresse complète"
           >
-            <Input.TextArea placeholder="Adresse complète" rows={2} />
+            <TextArea rows={2} placeholder="Adresse postale complète" />
           </Form.Item>
 
-          <Form.Item
-            name="destinataire_email"
-            label="Email du destinataire"
-            rules={[
-              { type: 'email', message: "Format d'email invalide" }
-            ]}
-          >
-            <Input placeholder="email@exemple.com" />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item
+                name="date_envoi"
+                label="Date d'envoi"
+                rules={[{ required: true, message: "La date est obligatoire" }]}
+              >
+                <DatePicker 
+                  style={{ width: "100%" }} 
+                  format="DD/MM/YYYY"
+                  placeholder="Sélectionner une date"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="canal" label="Canal">
+                <Select>
+                  <Option value="email">Email</Option>
+                  <Option value="physique">Physique</Option>
+                  <Option value="portail">Portail</Option>
+                  <Option value="telephone">Téléphone</Option>
+                  <Option value="courrier">Courrier postal</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="confidentialite" label="Confidentialité">
+                <Select>
+                  <Option value="normale">Normale</Option>
+                  <Option value="restreinte">Restreinte</Option>
+                  <Option value="confidentielle">Confidentielle</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item name="priorite" label="Priorité">
+                <Select>
+                  <Option value="urgente">Urgente</Option>
+                  <Option value="haute">Haute</Option>
+                  <Option value="normale">Normale</Option>
+                  <Option value="basse">Basse</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item 
+                name="category" 
+                label="Catégorie"
+                rules={[{ required: true, message: "La catégorie est obligatoire" }]}
+              >
+                <Select 
+                  placeholder="Sélectionner une catégorie"
+                  loading={categories.length === 0}
+                >
+                  {categories.map((c) => (
+                    <Option key={c.name} value={c.name}>
+                      {c.nom}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                name="service_id"
+                label="Service imputé"
+                rules={[{ required: true, message: "Le service est obligatoire" }]}
+              >
+                <Select 
+                  placeholder="Sélectionner un service"
+                  loading={services.length === 0}
+                >
+                  {services.map(s => (
+                    <Option key={s.id} value={s.id}>{s.nom}</Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item
-            name="date_envoi"
-            label="Date d'envoi"
-            rules={[{ required: true, message: "La date d'envoi est obligatoire" }]}
+            name="contenu_texte"
+            label="Contenu du courrier"
           >
-            <DatePicker 
-              style={{ width: "100%" }} 
-              format="DD/MM/YYYY"
+            <TextArea 
+              rows={4} 
+              placeholder="Résumé ou contenu du courrier..." 
+              showCount 
+              maxLength={1000}
             />
           </Form.Item>
 
-          <Form.Item name="canal" label="Canal">
-            <Select>
-              <Option value="email">Email</Option>
-              <Option value="physique">Physique</Option>
-              <Option value="portail">Portail</Option>
-              <Option value="telephone">Téléphone</Option>
-              <Option value="autre">Autre</Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item name="confidentialite" label="Confidentialité">
-            <Select>
-              <Option value="normale">Normale</Option>
-              <Option value="restreinte">Restreinte</Option>
-              <Option value="confidentielle">Confidentielle</Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item name="priorite" label="Priorité">
-            <Select>
-              <Option value="urgente">Urgente</Option>
-              <Option value="haute">Haute</Option>
-              <Option value="normale">Normale</Option>
-              <Option value="basse">Basse</Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item name="category" label="Catégorie">
-            <Select allowClear placeholder="Sélectionner une catégorie">
-              {categories.map((c) => (
-                <Option key={c.id} value={c.id}>
-                  {c.nom}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            name="service_id"
-            label="Service imputé"
-            rules={[{ required: true, message: "Le service est obligatoire" }]}
-          >
-            <Select allowClear placeholder="Sélectionner un service">
-              {services.map(s => (
-                <Option key={s.id} value={s.id}>{s.nom}</Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          <Form.Item>
+          <Form.Item style={{ textAlign: 'right', marginBottom: 0 }}>
             <Space>
               <Button 
                 onClick={() => {
-                  setOpen(false);
+                  setOpenModal(false);
                   setEditingId(null);
                 }}
               >
                 Annuler
               </Button>
-              <Button type="primary" htmlType="submit" loading={loading}>
-                {editingId ? "Modifier" : "Enregistrer"}
+              <Button 
+                type="primary" 
+                htmlType="submit" 
+                loading={loading}
+                icon={editingId ? <EditOutlined /> : <SendOutlined />}
+              >
+                {editingId ? 'Modifier' : 'Enregistrer'}
               </Button>
             </Space>
           </Form.Item>

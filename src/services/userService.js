@@ -85,3 +85,12 @@ export const changePassword = async (payload) => {
   );
   return res.data;
 };
+
+export const getUsersByService = async (serviceId, roles = []) => {
+  const params = { service: serviceId };
+  if (roles.length) {
+    params.role = roles;
+  }
+  const response = await axios.get('/users/par-service/', { params });
+  return response.data;
+};

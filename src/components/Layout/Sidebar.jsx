@@ -1,6 +1,6 @@
 // src/components/Layout/Sidebar.jsx
 import React, { useEffect, useState } from "react";
-import { Layout, Menu, Avatar, Tooltip } from "antd";
+import { Layout, Menu, Avatar, Tooltip, Badge } from "antd";
 import {
   DashboardOutlined,
   InboxOutlined,
@@ -14,6 +14,13 @@ import {
   TeamOutlined,
   AppstoreOutlined,
   CrownOutlined,
+  UserOutlined,
+  FileOutlined,
+  SolutionOutlined,
+  ToolOutlined,
+  MailOutlined,
+  CheckCircleOutlined,
+  FileTextOutlined,
 } from "@ant-design/icons";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -28,40 +35,84 @@ const Sidebar = ({ userRole, collapsed }) => {
     setSelectedKey(location.pathname);
   }, [location.pathname]);
 
-  // Permissions par rôle
+  // Permissions par rôle – inclut maintenant "traitement"
   const rolePermissions = {
     admin: [
       "dashboard-admin",
-      // "courriers",
-      // "workflow",
+      "workflow",
       "ia",
       "archives",
       "services",
       "reports",
       "administration",
+      "traitement",
     ],
-    chef: ["dashboard", "courriers", "workflow", "ia"],
-    direction: ["dashboard", "courriers", "workflow", "ia", "reports", "archives"],
-    collaborateur: ["dashboard", "courriers"],
-    agent_courrier: ["dashboard", "courriers", "workflow", "ia"],
-    archiviste: ["dashboard", "courriers", "archives", "reports"],
-    
+    chef: [
+      "dashboard",
+      "courriers",
+      "workflow",
+      "ia",
+      "services",
+      "traitement",
+    ],
+    direction: [
+      "dashboard",
+      "courriers",
+      "workflow",
+      "ia",
+      "reports",
+      "archives",
+      "services",
+      "traitement",
+    ],
+    collaborateur: [
+      "dashboard",
+      "courriers",
+      "traitement",
+    ],
+    agent_courrier: [
+      "dashboard",
+      "courriers",
+      "workflow",
+      "ia",
+    ],
+    agent_service: [
+      "dashboard",
+      "agent-dashboard",
+      "courriers",
+      "traitement",
+    ],
+    archiviste: [
+      "dashboard",
+      "courriers",
+      "archives",
+      "reports",
+    ],
   };
 
   // Déterminer la couleur du rôle
   const getRoleColor = (role) => {
     switch (role) {
-      case 'admin': return '#f5222d';
-      case 'chef': return '#fa8c16';
-      case 'direction': return '#722ed1';
-      case 'collaborateur': return '#1890ff';
-      case 'agent_courrier': return '#52c41a';
-      case 'archiviste': return '#13c2c2';
-      default: return '#8c8c8c';
+      case "admin":
+        return "#f5222d";
+      case "chef":
+        return "#fa8c16";
+      case "direction":
+        return "#722ed1";
+      case "collaborateur":
+        return "#1890ff";
+      case "agent_courrier":
+        return "#52c41a";
+      case "agent_service":
+        return "#13c2c2";
+      case "archiviste":
+        return "#eb2f96";
+      default:
+        return "#8c8c8c";
     }
   };
 
-  // Structure de menu
+  // Structure de menu – inclut l'entrée "Traitement"
   const getMenuStructure = (role) => {
     const baseStructure = [
       {
@@ -75,11 +126,31 @@ const Sidebar = ({ userRole, collapsed }) => {
         label: "Gestion des Courriers",
         icon: <InboxOutlined />,
         children: [
-          { key: "/courriers-entrants", label: "Courriers Entrants", icon: <InboxOutlined /> },
-          { key: "/courriers-sortants", label: "Courriers Sortants", icon: <SendOutlined /> },
-          { key: "/courriers-internes", label: "Courriers Internes", icon: <HomeOutlined /> },
-          { key: "/imputation", label: "Imputation", icon: <SwapOutlined /> },
-          { key: "/archives", label: "Archives", icon: <FolderOpenOutlined /> },
+          {
+            key: "/courriers-entrants",
+            label: "Courriers Entrants",
+            icon: <InboxOutlined />,
+          },
+          {
+            key: "/courriers-sortants",
+            label: "Courriers Sortants",
+            icon: <SendOutlined />,
+          },
+          {
+            key: "/courriers-internes",
+            label: "Courriers Internes",
+            icon: <HomeOutlined />,
+          },
+          {
+            key: "/imputation",
+            label: "Imputation",
+            icon: <SwapOutlined />,
+          },
+          {
+            key: "/archives",
+            label: "Archives",
+            icon: <FolderOpenOutlined />,
+          },
         ],
       },
       {
@@ -94,6 +165,40 @@ const Sidebar = ({ userRole, collapsed }) => {
         icon: <RobotOutlined />,
         path: "/ia",
       },
+    ];
+
+    // ===== MODULE TRAITEMENT – accessible aux agents, collaborateurs, chefs, directions, admin =====
+    if (["agent_service", "collaborateur", "chef", "direction", "admin"].includes(role)) {
+      baseStructure.push({
+        key: "traitement",
+        label: "Traitement",
+        icon: <FileTextOutlined />,
+        path: "/traitement/dashboard",  // Page d'accueil du module traitement
+      });
+    }
+
+    // Gestion des services – admin, direction, chef
+    if (["admin", "direction", "chef"].includes(role)) {
+      baseStructure.push({
+        key: "services",
+        label: "Gestion des Services",
+        icon: <TeamOutlined />,
+        path: "/services",
+      });
+    }
+
+    // Dashboard spécifique pour agent_service
+    if (role === "agent_service") {
+      baseStructure.push({
+        key: "agent-dashboard",
+        label: "Mon Dashboard",
+        icon: <UserOutlined />,
+        path: "/agent-dashboard",
+      });
+    }
+
+    // Sections communes
+    baseStructure.push(
       {
         key: "reports",
         label: "Rapports & Statistiques",
@@ -105,15 +210,26 @@ const Sidebar = ({ userRole, collapsed }) => {
         label: "Administration",
         icon: <SettingOutlined />,
         children: [
-          { key: "/administration", label: "Utilisateurs", icon: <TeamOutlined /> },
-          { key: "/services-admin", label: "Services", icon: <HomeOutlined /> },
-          { key: "/categories", label: "Catégories", icon: <AppstoreOutlined /> },
-          { key: "/rules", label: "Règles IA", icon: <RobotOutlined /> },
+          {
+            key: "/administration",
+            label: "Utilisateurs",
+            icon: <TeamOutlined />,
+          },
+          {
+            key: "/categories",
+            label: "Catégories",
+            icon: <AppstoreOutlined />,
+          },
+          {
+            key: "/rules",
+            label: "Règles IA",
+            icon: <RobotOutlined />,
+          },
         ],
-      },
-    ];
+      }
+    );
 
-    // Pour l'admin, ajouter dashboard admin
+    // Dashboard admin (en tête pour admin)
     if (role === "admin") {
       return [
         {
@@ -129,12 +245,12 @@ const Sidebar = ({ userRole, collapsed }) => {
     return baseStructure;
   };
 
-  // Filtrer selon les permissions
+  // Filtrer les items selon les permissions du rôle
   const allowedMenu = getMenuStructure(userRole).filter((item) =>
     rolePermissions[userRole]?.includes(item.key)
   );
 
-  // Transformer en format Ant Design
+  // Transformer en format Ant Design Menu
   const buildMenuItems = (items) =>
     items.map((item) => {
       if (item.children) {
@@ -142,20 +258,32 @@ const Sidebar = ({ userRole, collapsed }) => {
           key: item.key,
           icon: item.icon,
           label: item.label,
-          children: item.children.map((child) => ({
-            key: child.key,
-            label: child.label,
-            icon: child.icon,
-            onClick: () => navigate(child.key),
-          })),
+          children: item.children
+            .filter((child) => {
+              // Filtres supplémentaires pour sous-menus
+              if (child.key === "/services" && !["admin", "direction", "chef"].includes(userRole)) {
+                return false;
+              }
+              if (child.key === "/agent-dashboard" && userRole !== "agent_service") {
+                return false;
+              }
+              // On conserve toutes les autres entrées
+              return true;
+            })
+            .map((child) => ({
+              key: child.key,
+              label: child.label,
+              icon: child.icon,
+              onClick: () => navigate(child.key),
+            })),
         };
       }
 
       return {
-        key: item.path,
+        key: item.path || item.key,
         icon: item.icon,
         label: item.label,
-        onClick: () => navigate(item.path),
+        onClick: () => navigate(item.path || item.key),
       };
     });
 
@@ -176,7 +304,7 @@ const Sidebar = ({ userRole, collapsed }) => {
         boxShadow: "2px 0 8px rgba(0,0,0,0.1)",
       }}
     >
-      {/* Logo avec indication de rôle */}
+      {/* Logo et badge de rôle */}
       <div
         style={{
           height: 70,
@@ -189,8 +317,8 @@ const Sidebar = ({ userRole, collapsed }) => {
         }}
       >
         {collapsed ? (
-          <Tooltip 
-            title={`${userRole?.charAt(0).toUpperCase() + userRole?.slice(1)}`} 
+          <Tooltip
+            title={`${userRole?.charAt(0).toUpperCase() + userRole?.slice(1)}`}
             placement="right"
           >
             <Avatar
@@ -199,7 +327,6 @@ const Sidebar = ({ userRole, collapsed }) => {
                 backgroundColor: getRoleColor(userRole),
                 cursor: "pointer",
               }}
-              // icon={getRoleIcon(userRole)}
             />
           </Tooltip>
         ) : (
@@ -211,7 +338,7 @@ const Sidebar = ({ userRole, collapsed }) => {
         )}
       </div>
 
-      {/* Indicateur de rôle en mode étendu */}
+      {/* Indicateur de rôle (mode étendu) */}
       {!collapsed && (
         <div
           style={{
@@ -223,12 +350,14 @@ const Sidebar = ({ userRole, collapsed }) => {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ 
-              width: 8, 
-              height: 8, 
-              borderRadius: '50%', 
-              backgroundColor: getRoleColor(userRole) 
-            }} />
+            <div
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                backgroundColor: getRoleColor(userRole),
+              }}
+            />
             <span>{userRole?.toUpperCase()}</span>
           </div>
         </div>

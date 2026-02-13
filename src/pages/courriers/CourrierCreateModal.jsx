@@ -115,8 +115,6 @@ const CourrierCreateModal = ({
           <Select placeholder="Sélectionnez le canal">
             <Option value="Physique">Physique</Option>
             <Option value="Email">Email</Option>
-            <Option value="Portail">Portail</Option>
-            <Option value="Autre">Autre</Option>
           </Select>
         </Form.Item>
 

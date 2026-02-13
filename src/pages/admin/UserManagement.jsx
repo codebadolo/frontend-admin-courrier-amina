@@ -44,6 +44,8 @@ const UserManagement = () => {
     prenom: "",
     nom: "",
     role: "",
+    telephone: "",
+    service_id: "",
   });
 
   const fetchUsers = async () => {
@@ -69,7 +71,7 @@ const UserManagement = () => {
       toast({ title: "Utilisateur ajouté !" });
       setOpenAdd(false);
       fetchUsers();
-      setForm({ email: "", prenom: "", nom: "", role: "" });
+      setForm({ email: "", prenom: "", nom: "", role: "", telephone: "", service_id: "" });
     } catch {
       toast({
         title: "Erreur",

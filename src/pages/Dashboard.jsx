@@ -342,64 +342,6 @@ const Dashboard = () => {
         </Col>
       </Row>
 
-      {/* Performance and Details Row */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} lg={16}>
-          <Card 
-            title={
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <TeamOutlined />
-                <span>Performance par service</span>
-              </div>
-            }
-            extra={
-              <Button type="link" icon={<EyeOutlined />}>
-                Voir détails
-              </Button>
-            }
-          >
-            {performance.length > 0 ? (
-              <Table 
-                dataSource={performance} 
-                columns={columns} 
-                pagination={false}
-                size="small"
-                rowKey="service"
-              />
-            ) : (
-              <Empty description="Aucune donnée de performance disponible" />
-            )}
-          </Card>
-        </Col>
-        
-        <Col xs={24} lg={8}>
-          <Card 
-            title={
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <CalendarOutlined />
-                <span>Activités récentes</span>
-              </div>
-            }
-          >
-            <Timeline
-              items={recentActivities.map((activity, index) => ({
-                key: index,
-                color: activity.type === 'entrant' ? 'blue' :
-                       activity.type === 'imputation' ? 'green' :
-                       activity.type === 'traitement' ? 'orange' : 'purple',
-                children: (
-                  <div>
-                    <div style={{ fontWeight: 500 }}>{activity.action}</div>
-                    <div style={{ fontSize: '12px', color: '#666' }}>
-                      {activity.time} • Par {activity.user}
-                    </div>
-                  </div>
-                )
-              }))}
-            />
-          </Card>
-        </Col>
-      </Row>
 
       {/* Additional Insights */}
       <Row gutter={[16, 16]}>

@@ -4,6 +4,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthContext } from "../contexts/AuthContext";
 import Layout from "../components/Layout/Layout";
 
+// Pages existantes
 import Dashboard from "../pages/Dashboard";
 import Login from "../pages/Login";
 import CourrierEntrants from "../pages/courriers/CourrierEntrants";
@@ -15,10 +16,14 @@ import Archives from "../pages/Archives";
 import Services from "../pages/Services";
 import Administrations from "../pages/Administrations";
 import Reports from "../pages/Reports";
-import DashboardAdmin from "../pages/admin/DashboardAdmin"; // Nouvelle importation
+import DashboardAdmin from "../pages/admin/DashboardAdmin";
 import ImputationDashboard from "../pages/courriers/ImputationDashboard";
+import CourrierEntrantDetail from "../pages/courriers/CourrierEntrantDetail";
 
-// import Profile from "../pages/Profile";
+// ⚡ NOUVEAU : Import des composants de traitement
+import TraitementDashboard from "../pages/traitement/TraitementDashboard";
+import TraitementCourrierList from "../pages/traitement/TraitementCourrierList";
+import TraitementCourrierDetail from "../pages/traitement/TraitementCourrierDetail";
 
 const PrivateRoute = ({ children }) => {
   const { user } = useContext(AuthContext);
@@ -42,16 +47,16 @@ const AppRoutes = () => {
         <Route path="/courriers-sortants" element={<CourriersSortants />} />
         <Route path="/courriers-internes" element={<CourriersInternes />} />
         <Route path="/workflow" element={<Workflow />} />
+        <Route path="/courriers-entrants/:id" element={<CourrierEntrantDetail />} />
         <Route path="/ia" element={<IA />} />
         <Route path="/archives" element={<Archives />} />
         <Route path="/administration" element={<Administrations />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/services-admin" element={<Services />} />
         <Route path="/imputation" element={<ImputationDashboard />} />
-        {/* <Route path="/imputation" element={<ImputationDashboard />} /> */}
-
-        {/* <Route path="/mon-profil" element={<Profile />} /> */}
-        
+        <Route path="/traitement/dashboard" element={<TraitementDashboard />} />
+        <Route path="/traitement/courriers" element={<TraitementCourrierList />} />
+        <Route path="/traitement/courriers/:id" element={<TraitementCourrierDetail />} />
         {/* Route spécifique admin */}
         <Route 
           path="/admin-dashboard" 
