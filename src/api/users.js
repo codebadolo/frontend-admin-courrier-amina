@@ -73,4 +73,8 @@ export const getUsersByRole = async (role) => {
   return users.filter(user => user.role === role);
 };
 
+export const getServices = async () => {
+  const res = await axios.get(`/core/services/`);
+  return res.data;
+};
 export default api;

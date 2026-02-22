@@ -105,4 +105,38 @@ export const traitementService = {
     const response = await api.get(`/services/${serviceId}/validateurs/`);
     return response.data;
   },
+
+
+
+
+  // Démarrer l'analyse
+  demarrerAnalyse: async (courrierId) => {
+    const response = await api.post(`/courriers/courriers/${courrierId}/demarrer_analyse/`
+    );
+    return response.data;
+  },
+
+  // Enregistrer l'analyse
+  enregistrerAnalyse: async (courrierId, data) => {
+    const response = await api.post(`/courriers/courriers/${courrierId}/enregistrer_analyse/`,
+      data
+    );
+    return response.data;
+  },
+
+  // Obtenir les services consultables
+  getServicesConsultables: async (courrierId) => {
+    const response = await api.get(`/courriers/courriers/${courrierId}/services_consultables/`
+    );
+    return response.data;
+  },
+
+  // Consulter un service
+  consulterService: async (courrierId, data) => {
+    const response = await api.post(`/courriers/courriers/${courrierId}/consulter_service/`,
+      data
+    );
+    return response.data;
+  }
 };
+

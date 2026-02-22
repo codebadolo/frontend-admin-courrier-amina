@@ -43,6 +43,7 @@ const roles = [
   { value: "collaborateur", label: "Collaborateur" },
   { value: "direction", label: "Direction" },
   { value: "archiviste", label: "Archiviste" },
+  { value: "agent_service", label: "Agent de service" },
 ];
 
 const Administrations = () => {

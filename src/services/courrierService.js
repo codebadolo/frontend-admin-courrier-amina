@@ -67,14 +67,18 @@ export const downloadPieceJointe = async (pieceId) => {
   return data;
 };
 
-// ==================== ANALYSE IA ====================
 export const analyzeDocument = async (file, additionalData = {}) => {
   const formData = new FormData();
   formData.append("pieces_jointes", file);
-  Object.keys(additionalData).forEach(key => {
-    formData.append(key, additionalData[key]);
+  
+  // Ne garder que les valeurs définies et non "undefined"
+  Object.entries(additionalData).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== 'undefined') {
+      formData.append(key, value);
+    }
   });
-  const { data } = await axios.post(`${COURRIER_URL}analyze_ai/`, formData, {
+  
+  const { data } = await axios.post(`${COURRIER_URL}analyse_ai/`, formData, {
     headers: { "Content-Type": "multipart/form-data" }
   });
   return data;
@@ -118,4 +122,10 @@ export const generateCourrierPDF = async (id) => {
     responseType: 'blob'
   });
   return data;
+};
+
+export const assignerAgent = async (courrierId, agentId) => {
+  const response = await axios.post(`${COURRIER_URL}${courrierId}/assigner_agent/`,{
+       agent_id: agentId });
+  return response.data;
 };

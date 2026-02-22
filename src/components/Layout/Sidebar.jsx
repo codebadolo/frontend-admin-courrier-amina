@@ -48,12 +48,13 @@ const Sidebar = ({ userRole, collapsed }) => {
       "traitement",
     ],
     chef: [
-      "dashboard",
+      "chef-dashboard",
       "courriers",
       "workflow",
       "ia",
       "services",
       "traitement",
+    
     ],
     direction: [
       "dashboard",
@@ -184,6 +185,15 @@ const Sidebar = ({ userRole, collapsed }) => {
         label: "Gestion des Services",
         icon: <TeamOutlined />,
         path: "/services",
+      });
+    }
+
+    if (role === "chef") {
+      baseStructure.push({
+        key: "chef-dashboard",
+        label: "Dashboard Chef",
+        icon: <CrownOutlined style={{ color: getRoleColor(role) }} />,
+        path: "/chef-service/dashboard",  // ← IMPORTANT : correspond à notre route
       });
     }
 

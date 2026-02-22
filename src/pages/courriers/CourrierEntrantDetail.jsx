@@ -175,7 +175,7 @@ const CourrierEntrantDetail = () => {
     if (!allowedStatuses.includes(courrier?.statut)) return false;
     if (userRole === 'agent_service') {
       const userServiceId = localStorage.getItem('userServiceId');
-      if (courrier?.service_impute_detail?.id !== parseInt(userServiceId)) return false;
+      if (courrier?.service_impute_detail?.id !== parseInt(userServiceId)) return true;
     }
     if (courrier?.agent_traitant && courrier.agent_traitant !== parseInt(userId)) return false;
     return true;
@@ -280,7 +280,16 @@ const CourrierEntrantDetail = () => {
             <Space direction="vertical" align="end" style={{ width: '100%' }}>
               <Space>
                 <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>Retour</Button>
-                {checkCanTreat(courrier) && <Button type="primary" icon={<ToolOutlined />} onClick={() => navigate(`/traitement/courriers/${numericId}`)} style={{ backgroundColor: '#1890ff', borderColor: '#1890ff', fontWeight: 'bold' }}>Traiter ce courrier</Button>}
+                {checkCanTreat(courrier) && 
+                  <Button 
+                    type="primary" 
+                    icon={<ToolOutlined />} 
+                    onClick={() => navigate(`/traitement/courriers/${numericId}`)} 
+                    style={{ backgroundColor: '#1890ff', borderColor: '#1890ff', fontWeight: 'bold' }}
+                  >
+                    Traiter ce courrier
+                  </Button>
+                }
                 <Button type="primary" icon={<PrinterOutlined />} onClick={() => window.print()}>Imprimer</Button>
               </Space>
 
@@ -313,14 +322,14 @@ const CourrierEntrantDetail = () => {
       </Card>
 
       {/* SECTION: QR CODE INLINE */}
-      <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #f0f0f0', marginBottom: '24px', textAlign: 'center' }}>
+      {/* <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #f0f0f0', marginBottom: '24px', textAlign: 'center' }}>
         <QRCodeSVG value={qrValue} size={120} />
         <div style={{ marginTop: '8px' }}>
           <Text strong>QR Code du courrier</Text>
           <br />
           <Text type="secondary" style={{ fontSize: '13px' }}>Scanner me</Text>
         </div>
-      </div>
+      </div> */}
 
       {/* CONTENU DU COURRIER */}
       {courrier.contenu_texte && (

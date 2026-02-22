@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Table, Button, Space, Modal, Form, Input, Upload,
   DatePicker, Select, message, Spin, Card, Tag, Row, Col, Badge, Descriptions, Tooltip
@@ -32,6 +33,7 @@ const CourriersSortants = () => {
   const [categories, setCategories] = useState([]);
   const [form] = Form.useForm();
   const [searchText, setSearchText] = useState("");
+  const navigate = useNavigate();
   const [filters, setFilters] = useState({
     service: null,
     category: null,
@@ -516,11 +518,7 @@ const CourriersSortants = () => {
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            onClick={() => {
-              setEditingId(null);
-              setOpenModal(true);
-              form.resetFields();
-            }}
+            onClick={() => navigate("/courriers-sortants/redaction")}  // ← REDIRECTION ICI
           >
             Nouveau courrier
           </Button>

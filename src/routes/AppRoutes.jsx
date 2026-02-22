@@ -24,6 +24,12 @@ import CourrierEntrantDetail from "../pages/courriers/CourrierEntrantDetail";
 import TraitementDashboard from "../pages/traitement/TraitementDashboard";
 import TraitementCourrierList from "../pages/traitement/TraitementCourrierList";
 import TraitementCourrierDetail from "../pages/traitement/TraitementCourrierDetail";
+import ChefServiceDashboard from "../pages/chefServices/ChefServiceDashboard"
+import ServiceManagement from "../pages/Services/ServiceManagement";
+import AnalyseCourrier from "../pages/traitement/AnalyseCourrier";
+import InstructionCourrier from "../pages/traitement/InstructionCourrier";
+import RedactionCourrier from "../pages/traitement/RedactionCourrier";
+import RedactionCourrierSortant from "../pages/courriers/RedactionCourrierSortant";
 
 const PrivateRoute = ({ children }) => {
   const { user } = useContext(AuthContext);
@@ -57,6 +63,14 @@ const AppRoutes = () => {
         <Route path="/traitement/dashboard" element={<TraitementDashboard />} />
         <Route path="/traitement/courriers" element={<TraitementCourrierList />} />
         <Route path="/traitement/courriers/:id" element={<TraitementCourrierDetail />} />
+        <Route path="/chef-service/dashboard" element={<ChefServiceDashboard />} />
+        <Route path="/assignation" element={<ChefServiceDashboard />} />
+        <Route path="/services" element={<ServiceManagement/>}/>
+        <Route path="/traitement/courriers/:id/analyse" element={<AnalyseCourrier />} />
+        <Route path="/traitement/courriers/:id/instruction" element={<InstructionCourrier />} />
+        <Route path="/traitement/courriers/:id/redaction" element={<RedactionCourrier />} />  
+        <Route path="/courriers-sortants/redaction" element={<RedactionCourrierSortant />} />
+        <Route path="/courriers-sortants/redaction/:id" element={<RedactionCourrierSortant />} />
         {/* Route spécifique admin */}
         <Route 
           path="/admin-dashboard" 

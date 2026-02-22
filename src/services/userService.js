@@ -94,3 +94,13 @@ export const getUsersByService = async (serviceId, roles = []) => {
   const response = await axios.get('/users/par-service/', { params });
   return response.data;
 };
+
+export const getRoleChoices = async () => {
+  try {
+    const response = await axios.get(`${BASE_URL}role-choices/`);
+    return response.data; // Retourne directement le tableau de rôles
+  } catch (error) {
+    console.error("Erreur lors de la récupération des rôles:", error);
+    throw error;
+  }
+};
