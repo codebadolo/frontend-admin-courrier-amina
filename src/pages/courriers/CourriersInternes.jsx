@@ -112,9 +112,8 @@ const CourriersInternes = () => {
         }}
       >
         <Title level={4} style={{ margin: 0 }}>
-          📄 Courriers internes
+          Courriers internes
         </Title>
-
         <Button
           type="primary"
           icon={<PlusOutlined />}
