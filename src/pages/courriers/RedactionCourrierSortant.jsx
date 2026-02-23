@@ -199,7 +199,7 @@ const RedactionCourrierSortant = () => {
             
             // Envoyer pour validation
             await axios.post(
-              `http://localhost:8000/api/courriers/courriers/${id || "nouveau"}/soumettre-validation/`,
+              `http://127.0.0.1:8000/api/courriers/courriers/${id || "nouveau"}/soumettre-validation/`,
               { commentaire: values.commentaire_validation }
             );
             
@@ -320,15 +320,7 @@ const RedactionCourrierSortant = () => {
                 <Form form={form} layout="vertical">
                   {/* Référence et Date */}
                   <Row gutter={16}>
-                    <Col span={12}>
-                      <Form.Item
-                        name="reference"
-                        label="Référence"
-                        rules={[{ required: true }]}
-                      >
-                        <Input placeholder="N° 2025-001/MEF/SG" />
-                      </Form.Item>
-                    </Col>
+               
                     <Col span={12}>
                       <Form.Item
                         name="date_envoi"

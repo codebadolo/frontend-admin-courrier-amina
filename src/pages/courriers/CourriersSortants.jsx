@@ -465,7 +465,7 @@ const CourriersSortants = () => {
               size="small"
               type="text"
               icon={<EyeOutlined />}
-              onClick={() => handleView(record)}
+         onClick={() => navigate(`/courriers-sortants/${record.id}`)}
             />
           </Tooltip>
           <Tooltip title="Modifier">
