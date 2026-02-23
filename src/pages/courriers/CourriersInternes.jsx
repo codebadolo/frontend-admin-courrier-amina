@@ -147,9 +147,8 @@ const loadCourriers = async () => {
         }}
       >
         <Title level={4} style={{ margin: 0 }}>
-          Courriers internes
+          📄 Courriers internes
         </Title>
-<<<<<<< HEAD
 
      <Button
   type="primary"
@@ -158,15 +157,6 @@ const loadCourriers = async () => {
 >
   Nouveau courrier interne
 </Button>
-=======
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => setOpenModal(true)}
-        >
-          Nouveau courrier interne
-        </Button>
->>>>>>> origin/main
       </Space>
 
       {/* Table */}
