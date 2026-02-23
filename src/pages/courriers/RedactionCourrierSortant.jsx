@@ -315,12 +315,15 @@ const RedactionCourrierSortant = () => {
         <Col span={18}>
           <Tabs defaultActiveKey="redaction" type="card">
             {/* Onglet Rédaction */}
-            <TabPane tab="✍️ Rédaction" key="redaction">
+            <TabPane tab="Rédaction" key="redaction">
               <Card>
                 <Form form={form} layout="vertical">
                   {/* Référence et Date */}
                   <Row gutter={16}>
+<<<<<<< HEAD
                
+=======
+>>>>>>> origin/main
                     <Col span={12}>
                       <Form.Item
                         name="date_envoi"
