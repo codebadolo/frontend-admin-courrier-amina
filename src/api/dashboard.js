@@ -9,6 +9,7 @@ export const fetchReports = async () => {
   return response.data;
 };
 
+
 export const fetchStats = async () => {
   const response = await axios.get(`${API_URL}stats/`, config);
   return response.data;
