@@ -204,7 +204,8 @@ const CourriersSortants = () => {
   const handleView = (courrier) => {
     const categorieName = getCategorieName(courrier.category);
     const serviceName = getServiceName(courrier.service_impute);
-    
+    navigate(`/courriers-sortants/${courrier.id}`);
+
     Modal.info({
       title: (
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

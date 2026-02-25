@@ -67,6 +67,7 @@ export const downloadPieceJointe = async (pieceId) => {
   return data;
 };
 
+// ==================== ANALYSE ====================
 export const analyzeDocument = async (file, additionalData = {}) => {
   const formData = new FormData();
   formData.append("pieces_jointes", file);
@@ -78,7 +79,7 @@ export const analyzeDocument = async (file, additionalData = {}) => {
     }
   });
   
-  const { data } = await axios.post(`${COURRIER_URL}analyse_ai/`, formData, {
+  const { data } = await axios.post(`/courriers/analyse_ia/`, formData, {
     headers: { "Content-Type": "multipart/form-data" }
   });
   return data;
@@ -117,15 +118,63 @@ export const getUsersByService = async (serviceId) => {
   return data;
 };
 
+// ==================== GÉNÉRATION PDF ====================
 export const generateCourrierPDF = async (id) => {
-  const { data } = await axios.get(`${COURRIER_URL}${id}/export_pdf/`, {
-    responseType: 'blob'
+  try {
+    const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
+    
+    const response = await axios.get(`${COURRIER_URL}${id}/export_pdf/`, {
+      responseType: 'blob',
+      headers: {
+        'Authorization': token ? `Token ${token}` : '',
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error("Erreur génération PDF:", error);
+    throw error;
+  }
+};
+
+// Alias pour compatibilité
+export const genererPDF = generateCourrierPDF;
+
+// ==================== ASSIGNATION ====================
+export const assignerAgent = async (courrierId, agentId) => {
+  const response = await axios.post(`${COURRIER_URL}${courrierId}/assigner_agent/`, {
+    agent_id: agentId 
   });
+  return response.data;
+};
+
+// ==================== VALIDATION ====================
+export const soumettreValidation = async (courrierId, commentaire = '') => {
+  const { data } = await axios.post(
+    `${COURRIER_URL}${courrierId}/soumettre-validation/`,
+    { commentaire }
+  );
   return data;
 };
 
-export const assignerAgent = async (courrierId, agentId) => {
-  const response = await axios.post(`${COURRIER_URL}${courrierId}/assigner_agent/`,{
-       agent_id: agentId });
-  return response.data;
+export const validerCourrier = async (courrierId, validationId, action = 'valider', commentaire = '') => {
+  const { data } = await axios.post(
+    `${COURRIER_URL}${courrierId}/valider/`,
+    { validation_id: validationId, action, commentaire }
+  );
+  return data;
+};
+
+export const signerCourrier = async (courrierId, signatureData = {}) => {
+  const { data } = await axios.post(
+    `${COURRIER_URL}${courrierId}/signer/`,
+    { signature_data: signatureData }
+  );
+  return data;
+};
+
+export const envoyerCourrier = async (courrierId) => {
+  const { data } = await axios.post(`${COURRIER_URL}${courrierId}/envoyer/`);
+  return data;
 };
