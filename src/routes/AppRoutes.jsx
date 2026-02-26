@@ -12,7 +12,7 @@ import CourriersSortants from "../pages/courriers/CourriersSortants";
 import CourriersInternes from "../pages/courriers/CourriersInternes";
 import Workflow from "../pages/Workflow";
 import IA from "../pages/IA";
-import CourrierInterneCreate from "../pages/courriers/CourrierInterneCreate";
+// import CourrierInterneCreate from "../pages/courriers/CourrierInterneCreate";
 import Archives from "../pages/Archives";
 import Services from "../pages/Services";
 import Administrations from "../pages/Administrations";
@@ -32,6 +32,10 @@ import AnalyseCourrier from "../pages/traitement/AnalyseCourrier";
 import InstructionCourrier from "../pages/traitement/InstructionCourrier";
 import RedactionCourrier from "../pages/traitement/RedactionCourrier";
 import RedactionCourrierSortant from "../pages/courriers/RedactionCourrierSortant";
+import MesCourriersATraiter from "../pages/agent/MesCourriersATraiter";
+// import ListeCourriersInternes from "../pages/courriers/ListeCourriersInternes";
+import CreerCourrierInterne from "../pages/courriers/CreerCourrierInterne";
+import DetailCourrierInterne from "../pages/courriers/DetailCourrierInterne";
 
 const PrivateRoute = ({ children }) => {
   const { user } = useContext(AuthContext);
@@ -64,7 +68,7 @@ const AppRoutes = () => {
         <Route path="/archives" element={<Archives />} />
         <Route path="/administration" element={<Administrations />} />
         <Route path="/reports" element={<Reports />} />
-         <Route path="/courriers-internes/creer" element={<CourrierInterneCreate />} />
+        {/* <Route path="/courriers-internes/creer" element={<CourrierInterneCreate />} /> */}
         <Route path="/services-admin" element={<Services />} />
         <Route path="/imputation" element={<ImputationDashboard />} />
         <Route path="/traitement/dashboard" element={<TraitementDashboard />} />
@@ -78,6 +82,10 @@ const AppRoutes = () => {
         <Route path="/traitement/courriers/:id/redaction" element={<RedactionCourrier />} />  
         <Route path="/courriers-sortants/redaction" element={<RedactionCourrierSortant />} />
         <Route path="/courriers-sortants/redaction/:id" element={<RedactionCourrierSortant />} />
+        <Route path="/mes-courriers-a-traiter" element={<MesCourriersATraiter />} />
+        {/* <Route path="/courriers-internes" element={<ListeCourriersInternes />} /> */}
+        <Route path="/courriers-internes/creer" element={<CreerCourrierInterne />} />
+        <Route path="/courriers-internes/:id" element={<DetailCourrierInterne />} />
         {/* Route spécifique admin */}
         <Route 
           path="/admin-dashboard" 

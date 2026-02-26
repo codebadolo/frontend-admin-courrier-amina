@@ -19,6 +19,8 @@ import {
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import axios from "axios";
+import { SwapOutlined } from '@ant-design/icons';
+import EnvoyerCourrierModal from "../courriers/EnvoyerCourrierModal";
 
 const { TabPane } = Tabs;
 
@@ -41,6 +43,8 @@ const DetailCourrierSortant = () => {
   const [courrier, setCourrier] = useState(null);
   const [loading, setLoading] = useState(true);
   const [timeline, setTimeline] = useState([]);
+  const [showEnvoyerModal, setShowEnvoyerModal] = useState(false);
+  const [courrierInfo, setCourrierInfo] = useState(null);
 
   useEffect(() => {
     loadCourrier();
@@ -153,6 +157,24 @@ const DetailCourrierSortant = () => {
             >
               Générer PDF
             </Button>
+
+            <Button 
+              type="primary" 
+              icon={<SwapOutlined />}
+              onClick={() => {
+                setCourrierInfo({
+                  id: courrier.id,
+                  reference: courrier.reference,
+                  objet: courrier.objet,
+                  responsable_actuel: courrier.responsable_actuel_detail?.prenom + ' ' + courrier.responsable_actuel_detail?.nom
+                });
+                setShowEnvoyerModal(true);
+              }}
+              style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
+            >
+              Transmettre
+            </Button>
+
           </Space>
         }
       >
@@ -251,6 +273,17 @@ const DetailCourrierSortant = () => {
           </TabPane>
         </Tabs>
       </Card>
+      <EnvoyerCourrierModal
+        visible={showEnvoyerModal}
+        onCancel={() => setShowEnvoyerModal(false)}
+        courrierId={id}
+        courrierInfo={courrierInfo}
+        onSuccess={() => {
+          message.success("Courrier transmis avec succès");
+          setShowEnvoyerModal(false);
+          loadCourrier(); // Recharger pour voir le nouveau responsable
+        }}
+      />
     </div>
   );
 };

@@ -29,7 +29,8 @@ import {
   getPiecesJointes, 
   downloadPieceJointe 
 } from "../../services/courrierService";
-import { traitementSerice } from "../../services/traitementService";  
+import { traitementSerice } from "../../services/traitementService";
+import AffectationMembreModal from "../chefServices/AffectationMembreModal";
 
 dayjs.extend(relativeTime);
 dayjs.locale('fr');
@@ -45,6 +46,9 @@ const CourrierEntrantDetail = () => {
   const [piecesJointes, setPiecesJointes] = useState([]);
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [showAffectationModal, setShowAffectationModal] = useState(false);
+  const [courrierInfo, setCourrierInfo] = useState(null);
+  const [userRole, setUserRole] = useState(localStorage.getItem('userRole'));
 
   // Extraire l'ID numérique
   const extractNumericId = (idParam) => {
@@ -84,6 +88,11 @@ const CourrierEntrantDetail = () => {
           console.warn("Erreur chargement pièces jointes:", pieceError);
         }
       }
+
+      // Mettre à jour le rôle si nécessaire
+      const role = localStorage.getItem('userRole');
+      if (role) setUserRole(role);
+      
     } catch (error) {
       console.error("Erreur détaillée:", error);
       if (error.response?.status === 404) {
@@ -128,7 +137,11 @@ const CourrierEntrantDetail = () => {
     return colors[statut] || 'blue';
   };
 
-  const shareUrl = `${window.location.origin}/detail-courrier/${id}`; // ✅ corrigé
+  const isChef = () => {
+    return userRole === 'chef';
+  };
+
+  const shareUrl = `${window.location.origin}/detail-courrier/${id}`;
 
   const qrValue = JSON.stringify({
     id: courrier?.id,
@@ -167,18 +180,19 @@ const CourrierEntrantDetail = () => {
 
   const checkCanTreat = (courrier) => {
     const userRole = localStorage.getItem('userRole');
-    const userId = localStorage.getItem('userId');
+    const userId = parseInt(localStorage.getItem('userId'));
     const allowedRoles = ['agent_service', 'collaborateur', 'chef', 'direction', 'admin'];
+    
     if (!allowedRoles.includes(userRole)) return false;
-    if (!courrier?.service_impute_detail?.id) return false;
-    const allowedStatuses = ['recu', 'impute'];
-    if (!allowedStatuses.includes(courrier?.statut)) return false;
-    if (userRole === 'agent_service') {
-      const userServiceId = localStorage.getItem('userServiceId');
-      if (courrier?.service_impute_detail?.id !== parseInt(userServiceId)) return true;
+    if (!courrier) return false;
+    
+    // Si le courrier a un responsable, seul ce responsable peut le traiter
+    if (courrier.responsable_actuel_detail?.id && courrier.responsable_actuel_detail.id !== userId) {
+      return false;
     }
-    if (courrier?.agent_traitant && courrier.agent_traitant !== parseInt(userId)) return false;
-    return true;
+    
+    const allowedStatuses = ['recu', 'impute', 'traitement'];
+    return allowedStatuses.includes(courrier?.statut);
   };
 
   if (loading) return (
@@ -269,17 +283,22 @@ const CourrierEntrantDetail = () => {
                       <TeamOutlined style={{ color: '#666' }} />
                       <Text strong style={{ fontSize: '14px' }}>{courrier.service_impute_detail?.nom || 'Non attribué'}</Text>
                     </Space>
-                    {courrier.responsable_actuel_detail && <Text type="secondary" style={{ fontSize: '12px', marginLeft: '24px' }}>Responsable: {courrier.responsable_actuel_detail.username}</Text>}
+                    {courrier.responsable_actuel_detail && <Text type="secondary" style={{ fontSize: '12px', marginLeft: '24px' }}>Responsable: {courrier.responsable_actuel_detail.prenom} {courrier.responsable_actuel_detail.nom}</Text>}
                   </Space>
                 </Col>
               </Row>
             </Space>
           </Col>
 
+          {/* Boutons d'action */}
           <Col span={6}>
             <Space direction="vertical" align="end" style={{ width: '100%' }}>
               <Space>
-                <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>Retour</Button>
+                <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>
+                  Retour
+                </Button>
+                
+                {/* Bouton Traiter - pour agents et collaborateurs */}
                 {checkCanTreat(courrier) && 
                   <Button 
                     type="primary" 
@@ -290,7 +309,32 @@ const CourrierEntrantDetail = () => {
                     Traiter ce courrier
                   </Button>
                 }
-                <Button type="primary" icon={<PrinterOutlined />} onClick={() => window.print()}>Imprimer</Button>
+                
+                {/* Bouton Affecter - pour les chefs UNIQUEMENT - VERSION CORRIGÉE */}
+                {userRole === 'chef' && courrier?.service_actuel && (
+                  <Button 
+                    type="primary" 
+                    icon={<TeamOutlined />}
+                    onClick={() => {
+                      console.log("Ouverture du modal d'affectation", courrier);
+                      setCourrierInfo({
+                        id: courrier.id,
+                        reference: courrier.reference,
+                        objet: courrier.objet,
+                        priorite: courrier.priorite,
+                        date_echeance: courrier.date_echeance
+                      });
+                      setShowAffectationModal(true);
+                    }}
+                    style={{ backgroundColor: '#fa8c16', borderColor: '#fa8c16' }}
+                  >
+                    Affecter à un membre
+                  </Button>
+                )}
+                
+                <Button type="primary" icon={<PrinterOutlined />} onClick={() => window.print()}>
+                  Imprimer
+                </Button>
               </Space>
 
               <Space wrap style={{ marginTop: '16px' }}>
@@ -319,17 +363,36 @@ const CourrierEntrantDetail = () => {
             </Space>
           </Col>
         </Row>
-      </Card>
 
-      {/* SECTION: QR CODE INLINE */}
-      {/* <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #f0f0f0', marginBottom: '24px', textAlign: 'center' }}>
-        <QRCodeSVG value={qrValue} size={120} />
-        <div style={{ marginTop: '8px' }}>
-          <Text strong>QR Code du courrier</Text>
-          <br />
-          <Text type="secondary" style={{ fontSize: '13px' }}>Scanner me</Text>
-        </div>
-      </div> */}
+        {/* Agent assigné (si présent) */}
+        {courrier.responsable_actuel_detail && (
+          <div style={{ 
+            backgroundColor: '#e6f7ff', 
+            borderRadius: '8px', 
+            padding: '16px', 
+            marginTop: '16px',
+            border: '1px solid #91d5ff'
+          }}>
+            <Space align="center" size="large">
+              <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
+              <div>
+                <Text strong style={{ color: '#0050b3' }}>Courrier assigné à</Text>
+                <div>
+                  <Text>{courrier.responsable_actuel_detail.prenom} {courrier.responsable_actuel_detail.nom}</Text>
+                  <Tag color="blue" style={{ marginLeft: '8px' }}>
+                    {courrier.responsable_actuel_detail.role === 'agent_service' ? 'Agent service' : 'Collaborateur'}
+                  </Tag>
+                </div>
+                {courrier.date_echeance && (
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    <ClockCircleOutlined /> À traiter avant le {dayjs(courrier.date_echeance).format('DD/MM/YYYY')}
+                  </Text>
+                )}
+              </div>
+            </Space>
+          </div>
+        )}
+      </Card>
 
       {/* CONTENU DU COURRIER */}
       {courrier.contenu_texte && (
@@ -395,6 +458,19 @@ const CourrierEntrantDetail = () => {
           <Text type="secondary" style={{ fontSize: '12px' }}>Lien utilisable pour partager le courrier</Text>
         </Space>
       </Modal>
+
+      {/* Modal d'affectation */}
+      <AffectationMembreModal
+        visible={showAffectationModal}
+        onCancel={() => setShowAffectationModal(false)}
+        courrierId={numericId}
+        courrierInfo={courrierInfo}
+        onSuccess={() => {
+          message.success("Courrier affecté avec succès");
+          setShowAffectationModal(false);
+          loadCourrierDetail(); // Recharger les détails pour voir l'assignation
+        }}
+      />
     </div>
   );
 };

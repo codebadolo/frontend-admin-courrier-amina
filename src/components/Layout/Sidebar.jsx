@@ -1,6 +1,6 @@
 // src/components/Layout/Sidebar.jsx
 import React, { useEffect, useState } from "react";
-import { Layout, Menu, Avatar, Tooltip, Badge } from "antd";
+import { Layout, Menu, Avatar, Tooltip } from "antd";
 import {
   DashboardOutlined,
   InboxOutlined,
@@ -15,11 +15,6 @@ import {
   AppstoreOutlined,
   CrownOutlined,
   UserOutlined,
-  FileOutlined,
-  SolutionOutlined,
-  ToolOutlined,
-  MailOutlined,
-  CheckCircleOutlined,
   FileTextOutlined,
 } from "@ant-design/icons";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -35,85 +30,21 @@ const Sidebar = ({ userRole, collapsed }) => {
     setSelectedKey(location.pathname);
   }, [location.pathname]);
 
-  // Permissions par rôle – inclut maintenant "traitement"
-  const rolePermissions = {
-    admin: [
-      "dashboard-admin",
-      "workflow",
-      "ia",
-      "archives",
-      "services",
-      "reports",
-      "administration",
-      "traitement",
-    ],
-    chef: [
-      "chef-dashboard",
-      "courriers",
-      "workflow",
-      "ia",
-      "services",
-      "traitement",
-    
-    ],
-    direction: [
-      "dashboard",
-      "courriers",
-      "workflow",
-      "ia",
-      "reports",
-      "archives",
-      "services",
-      "traitement",
-    ],
-    collaborateur: [
-      "dashboard",
-      "courriers",
-      "traitement",
-    ],
-    agent_courrier: [
-      "dashboard",
-      "courriers",
-      "workflow",
-      "ia",
-    ],
-    agent_service: [
-      "dashboard",
-      "agent-dashboard",
-      "courriers",
-      "traitement",
-    ],
-    archiviste: [
-      "dashboard",
-      "courriers",
-      "archives",
-      "reports",
-    ],
-  };
-
   // Déterminer la couleur du rôle
   const getRoleColor = (role) => {
     switch (role) {
-      case "admin":
-        return "#f5222d";
-      case "chef":
-        return "#fa8c16";
-      case "direction":
-        return "#722ed1";
-      case "collaborateur":
-        return "#1890ff";
-      case "agent_courrier":
-        return "#52c41a";
-      case "agent_service":
-        return "#13c2c2";
-      case "archiviste":
-        return "#eb2f96";
-      default:
-        return "#8c8c8c";
+      case "admin": return "#f5222d";
+      case "chef": return "#fa8c16";
+      case "direction": return "#722ed1";
+      case "collaborateur": return "#1890ff";
+      case "agent_courrier": return "#52c41a";
+      case "agent_service": return "#13c2c2";
+      case "archiviste": return "#eb2f96";
+      default: return "#8c8c8c";
     }
   };
 
-  // Structure de menu – inclut l'entrée "Traitement"
+  // Structure de menu
   const getMenuStructure = (role) => {
     const baseStructure = [
       {
@@ -127,59 +58,27 @@ const Sidebar = ({ userRole, collapsed }) => {
         label: "Gestion des Courriers",
         icon: <InboxOutlined />,
         children: [
-          {
-            key: "/courriers-entrants",
-            label: "Courriers Entrants",
-            icon: <InboxOutlined />,
-          },
-          {
-            key: "/courriers-sortants",
-            label: "Courriers Sortants",
-            icon: <SendOutlined />,
-          },
-          {
-            key: "/courriers-internes",
-            label: "Courriers Internes",
-            icon: <HomeOutlined />,
-          },
-          {
-            key: "/imputation",
-            label: "Imputation",
-            icon: <SwapOutlined />,
-          },
-          {
-            key: "/archives",
-            label: "Archives",
-            icon: <FolderOpenOutlined />,
-          },
+          { key: "/courriers-entrants", label: "Courriers Entrants", icon: <InboxOutlined /> },
+          { key: "/courriers-sortants", label: "Courriers Sortants", icon: <SendOutlined /> },
+          { key: "/courriers-internes", label: "Courriers Internes", icon: <HomeOutlined /> },
+          { key: "/imputation", label: "Imputation", icon: <SwapOutlined /> },
+          { key: "/archives", label: "Archives", icon: <FolderOpenOutlined /> },
         ],
       },
-      {
-        key: "workflow",
-        label: "Workflow",
-        icon: <SwapOutlined />,
-        path: "/workflow",
-      },
-      {
-        key: "ia",
-        label: "IA & Automatisation",
-        icon: <RobotOutlined />,
-        path: "/ia",
-      },
+      { key: "workflow", label: "Workflow", icon: <SwapOutlined />, path: "/workflow" },
+      // { key: "ia", label: "IA & Automatisation", icon: <RobotOutlined />, path: "/ia" },
     ];
 
-    // ===== MODULE TRAITEMENT – accessible aux agents, collaborateurs, chefs, directions, admin =====
     if (["agent_service", "collaborateur", "chef", "direction", "admin"].includes(role)) {
       baseStructure.push({
         key: "traitement",
         label: "Traitement",
         icon: <FileTextOutlined />,
-        path: "/traitement/dashboard",  // Page d'accueil du module traitement
+        path: "/traitement/dashboard",
       });
     }
 
-    // Gestion des services – admin, direction, chef
-    if (["admin", "direction", "chef"].includes(role)) {
+    if (["admin"].includes(role)) {
       baseStructure.push({
         key: "services",
         label: "Gestion des Services",
@@ -193,11 +92,10 @@ const Sidebar = ({ userRole, collapsed }) => {
         key: "chef-dashboard",
         label: "Dashboard Chef",
         icon: <CrownOutlined style={{ color: getRoleColor(role) }} />,
-        path: "/chef-service/dashboard",  // ← IMPORTANT : correspond à notre route
+        path: "/chef-service/dashboard",
       });
     }
 
-    // Dashboard spécifique pour agent_service
     if (role === "agent_service") {
       baseStructure.push({
         key: "agent-dashboard",
@@ -207,39 +105,40 @@ const Sidebar = ({ userRole, collapsed }) => {
       });
     }
 
-    // Sections communes
-    baseStructure.push(
-      {
+    if (["direction", "admin"].includes(role)) {
+      baseStructure.push({
         key: "reports",
         label: "Rapports & Statistiques",
-        icon: <BarChartOutlined />,
+        icon: <BarChartOutlined />, 
         path: "/reports",
-      },
-      {
-        key: "administration",
-        label: "Administration",
-        icon: <SettingOutlined />,
-        children: [
-          {
-            key: "/administration",
-            label: "Utilisateurs",
-            icon: <TeamOutlined />,
-          },
-          {
-            key: "/categories",
-            label: "Catégories",
-            icon: <AppstoreOutlined />,
-          },
-          {
-            key: "/rules",
-            label: "Règles IA",
-            icon: <RobotOutlined />,
-          },
-        ],
-      }
-    );
+      });
+    }
 
-    // Dashboard admin (en tête pour admin)
+    if (role === 'agent_service' || role === 'collaborateur') {
+      baseStructure.push({
+        key: "mes-courriers",
+        label: "Mes courriers à traiter",
+        icon: <FileTextOutlined />,
+        path: "/mes-courriers-a-traiter",
+      });
+    }
+
+    if (["admin"].includes(role)) {
+      baseStructure.push(
+        {
+          key: "administration",
+          label: "Administration",
+          icon: <SettingOutlined />,
+          children: [
+            { key: "/administration", label: "Utilisateurs", icon: <TeamOutlined /> },
+            { key: "services", label: "Services", icon: <TeamOutlined />, path: "/services" },
+            { key: "/categories", label: "Catégories", icon: <AppstoreOutlined /> },
+            { key: "/rules", label: "Règles IA", icon: <RobotOutlined /> },
+          ],
+        }
+      );
+    }
+
     if (role === "admin") {
       return [
         {
@@ -255,12 +154,6 @@ const Sidebar = ({ userRole, collapsed }) => {
     return baseStructure;
   };
 
-  // Filtrer les items selon les permissions du rôle
-  const allowedMenu = getMenuStructure(userRole).filter((item) =>
-    rolePermissions[userRole]?.includes(item.key)
-  );
-
-  // Transformer en format Ant Design Menu
   const buildMenuItems = (items) =>
     items.map((item) => {
       if (item.children) {
@@ -268,27 +161,14 @@ const Sidebar = ({ userRole, collapsed }) => {
           key: item.key,
           icon: item.icon,
           label: item.label,
-          children: item.children
-            .filter((child) => {
-              // Filtres supplémentaires pour sous-menus
-              if (child.key === "/services" && !["admin", "direction", "chef"].includes(userRole)) {
-                return false;
-              }
-              if (child.key === "/agent-dashboard" && userRole !== "agent_service") {
-                return false;
-              }
-              // On conserve toutes les autres entrées
-              return true;
-            })
-            .map((child) => ({
-              key: child.key,
-              label: child.label,
-              icon: child.icon,
-              onClick: () => navigate(child.key),
-            })),
+          children: item.children.map((child) => ({
+            key: child.key,
+            label: child.label,
+            icon: child.icon,
+            onClick: () => navigate(child.key),
+          })),
         };
       }
-
       return {
         key: item.path || item.key,
         icon: item.icon,
@@ -297,7 +177,13 @@ const Sidebar = ({ userRole, collapsed }) => {
       };
     });
 
-  const items = buildMenuItems(allowedMenu);
+  const items = buildMenuItems(getMenuStructure(userRole));
+
+  // Hauteur des éléments fixes
+  const headerHeight = 70; // Logo
+  const roleHeight = collapsed ? 0 : 44; // Badge de rôle
+  const footerHeight = collapsed ? 0 : 45; // Footer version
+  const totalFixedHeight = headerHeight + roleHeight + footerHeight;
 
   return (
     <Sider
@@ -305,86 +191,108 @@ const Sidebar = ({ userRole, collapsed }) => {
       collapsed={collapsed}
       width={250}
       collapsedWidth={80}
+      theme="dark"
       style={{
         height: "100vh",
         position: "fixed",
         left: 0,
         top: 0,
+        bottom: 0,
         zIndex: 100,
         boxShadow: "2px 0 8px rgba(0,0,0,0.1)",
+        overflow: "hidden", // Empêche le défilement sur le Sider lui-même
       }}
     >
-      {/* Logo et badge de rôle */}
+      {/* Logo - FIXE */}
       <div
         style={{
-          height: 70,
+          height: headerHeight,
           display: "flex",
           alignItems: "center",
           justifyContent: collapsed ? "center" : "space-between",
           padding: collapsed ? 0 : "0 20px",
-          background: "rgba(255, 255, 255, 0.05)",
+          background: "#001529",
           borderBottom: "1px solid rgba(255,255,255,0.1)",
         }}
       >
         {collapsed ? (
-          <Tooltip
-            title={`${userRole?.charAt(0).toUpperCase() + userRole?.slice(1)}`}
-            placement="right"
-          >
+          <Tooltip title={userRole} placement="right">
             <Avatar
               size="large"
-              style={{
-                backgroundColor: getRoleColor(userRole),
-                cursor: "pointer",
-              }}
+              style={{ backgroundColor: getRoleColor(userRole), cursor: "pointer" }}
             />
           </Tooltip>
         ) : (
-          <>
-            <div style={{ color: "white", fontWeight: "bold", fontSize: 20 }}>
-              MyCourrier
-            </div>
-          </>
+          <div style={{ color: "white", fontWeight: "bold", fontSize: 20 }}>
+            MyCourrier
+          </div>
         )}
       </div>
 
-      {/* Indicateur de rôle (mode étendu) */}
+      {/* Badge de rôle - FIXE (si non collapsed) */}
       {!collapsed && (
         <div
           style={{
+            height: roleHeight,
             padding: "8px 20px",
             color: "rgba(255,255,255,0.8)",
             fontSize: 12,
             textTransform: "uppercase",
             borderBottom: "1px solid rgba(255,255,255,0.1)",
+            background: "#001529",
+            display: "flex",
+            alignItems: "center",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                backgroundColor: getRoleColor(userRole),
-              }}
-            />
+            <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: getRoleColor(userRole) }} />
             <span>{userRole?.toUpperCase()}</span>
           </div>
         </div>
       )}
 
-      {/* Menu principal */}
-      <Menu
-        theme="dark"
-        mode="inline"
-        items={items}
-        selectedKeys={[selectedKey]}
-        defaultOpenKeys={["courriers", "administration"]}
+      {/* Menu - SCROLLABLE */}
+      <div
         style={{
-          marginTop: 8,
-          borderRight: 0,
+          height: `calc(100vh - ${totalFixedHeight}px)`,
+          overflowY: "auto",
+          overflowX: "hidden",
+          background: "#001529",
         }}
-      />
+        className="sidebar-menu-container"
+      >
+        <Menu
+          theme="dark"
+          mode="inline"
+          items={items}
+          selectedKeys={[selectedKey]}
+          defaultOpenKeys={["courriers", "administration"]}
+          style={{
+            borderRight: 0,
+            background: "transparent",
+          }}
+        />
+      </div>
+
+      {/* Footer - FIXE (si non collapsed) */}
+      {!collapsed && (
+        <div
+          style={{
+            height: footerHeight,
+            padding: "12px 16px",
+            borderTop: "1px solid rgba(255,255,255,0.1)",
+            color: "rgba(255,255,255,0.5)",
+            fontSize: 12,
+            textAlign: "center",
+            background: "#001529",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          Version 1.0.0
+        </div>
+      )}
     </Sider>
   );
 };

@@ -178,3 +178,160 @@ export const envoyerCourrier = async (courrierId) => {
   const { data } = await axios.post(`${COURRIER_URL}${courrierId}/envoyer/`);
   return data;
 };
+
+
+// src/services/courrierService.js - Ajoutez à la fin du fichier
+
+// ==================== GESTION DES COURRIERS ENTRANTS ====================
+
+export const getMembresService = async (courrierId) => {
+  try {
+    const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
+    const { data } = await axios.get(
+      `${COURRIER_URL}${courrierId}/membres-service/`,
+      {
+        headers: {
+          'Authorization': token ? `Token ${token}` : '',
+        }
+      }
+    );
+    return data;
+  } catch (error) {
+    console.error("Erreur chargement membres:", error);
+    throw error;
+  }
+};
+
+export const affecterMembre = async (courrierId, membreId, options = {}) => {
+  try {
+    const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
+    const { data } = await axios.post(
+      `${COURRIER_URL}${courrierId}/affecter-membre/`,
+      {
+        membre_id: membreId,
+        commentaire: options.commentaire || '',
+        instructions: options.instructions || '',
+        delai_jours: options.delai_jours || 5
+      },
+      {
+        headers: {
+          'Authorization': token ? `Token ${token}` : '',
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    return data;
+  } catch (error) {
+    console.error("Erreur affectation:", error);
+    throw error;
+  }
+};
+
+export const traiterCourrier = async (courrierId, reponse = '', commentaire = '') => {
+  try {
+    const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
+    const { data } = await axios.post(
+      `${COURRIER_URL}${courrierId}/traiter-courrier/`,
+      {
+        reponse,
+        commentaire
+      },
+      {
+        headers: {
+          'Authorization': token ? `Token ${token}` : '',
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    return data;
+  } catch (error) {
+    console.error("Erreur traitement:", error);
+    throw error;
+  }
+};
+
+export const getMesCourriersATraiter = async (params = {}) => {
+  try {
+    const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
+    const { data } = await axios.get(
+      `${COURRIER_URL}mes-courriers-a-traiter/`,
+      {
+        params,
+        headers: {
+          'Authorization': token ? `Token ${token}` : '',
+        }
+      }
+    );
+    return data;
+  } catch (error) {
+    console.error("Erreur chargement courriers:", error);
+    throw error;
+  }
+};
+
+/// src/services/courrierService.js
+
+// ==================== TRANSMISSION INTERNE ====================
+
+export const getDestinatairesDisponibles = async (courrierId) => {
+  try {
+    const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
+    const { data } = await axios.get(
+      `${COURRIER_URL}${courrierId}/destinataires-disponibles/`,
+      {
+        headers: {
+          'Authorization': token ? `Token ${token}` : '',
+        }
+      }
+    );
+    return data;
+  } catch (error) {
+    console.error("Erreur chargement destinataires:", error);
+    throw error;
+  }
+};
+
+export const envoyerCourrierA = async (courrierId, destinataireId, commentaire = '') => {
+  try {
+    const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
+    const { data } = await axios.post(
+      `${COURRIER_URL}${courrierId}/envoyer-a/`,
+      {
+        destinataire_id: destinataireId,
+        commentaire: commentaire
+      },
+      {
+        headers: {
+          'Authorization': token ? `Token ${token}` : '',
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    return data;
+  } catch (error) {
+    console.error("Erreur transmission:", error);
+    throw error;
+  }
+};
+
+
+
+export const getServicesDestinataires = async (courrierId) => {
+  const { data } = await axios.get(`${COURRIER_URL}${courrierId}/services-destinataires/`);
+  return data;
+};
+
+export const transmettreCourrierInterne = async (courrierId, data) => {
+  const response = await axios.post(`${COURRIER_URL}${courrierId}/transmettre-interne/`, data);
+  return response.data;
+};
+
+export const viserCourrier = async (courrierId, data) => {
+  const response = await axios.post(`${COURRIER_URL}${courrierId}/viser-courrier/`, data);
+  return response.data;
+};
+
+export const validerCourrierInterne = async (courrierId, data) => {
+  const response = await axios.post(`${COURRIER_URL}${courrierId}/valider-interne/`, data);
+  return response.data;
+};
