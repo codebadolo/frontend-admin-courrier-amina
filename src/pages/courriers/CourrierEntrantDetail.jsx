@@ -398,7 +398,7 @@ const CourrierEntrantDetail = () => {
       {courrier.contenu_texte && (
         <div style={{ backgroundColor: '#fafafa', borderRadius: '8px', padding: '24px', marginBottom: '24px', border: '1px solid #f0f0f0' }}>
           <Title level={4}><FileTextOutlined /> Contenu du courrier</Title>
-          <div style={{ padding: '20px', backgroundColor: '#fff', borderRadius: '6px', border: '1px solid #f0f0f0', maxHeight: '300px', overflowY: 'auto' }}>
+          <div style={{ padding: '20px', backgroundColor: '#fff', borderRadius: '6px', border: '1px solid #f0f0f0', maxHeight: '600px', overflowY: 'auto', height : '' }}>
             <Paragraph style={{ whiteSpace: 'pre-wrap', margin: 0, lineHeight: '1.6' }}>{courrier.contenu_texte}</Paragraph>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
+import axios from "axios";
 import {
   Table, Button, Space, Modal, Form, Input, DatePicker, Select,
   Upload, message, Spin, Tag, Card, Alert, Row, Col,
@@ -125,82 +126,130 @@ const CourrierEntrants = () => {
     }
   };
 
-  const analyzeWithAI = async () => {
+  const analyzeWithGemini = async () => {
     if (!uploadedFile) {
-      message.error("Veuillez d'abord sélectionner un fichier");
+      message.error("Veuillez sélectionner un fichier");
       return;
     }
     setAiProcessing(true);
     try {
-      const values = form.getFieldsValue();
-      const result = await analyzeDocument(uploadedFile, {
-        ocr: "true",
-        objet: values.objet,
-        expediteur_nom: values.expediteur_nom,
-        expediteur_email: values.expediteur_email,
-        date_reception: values.date_reception?.format("YYYY-MM-DD"),
+      const formData = new FormData();
+      formData.append('fichier', uploadedFile);
+      const response = await axios.post('/courriers/ocr-gemini/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
-      console.log("Résultat IA:", result);
-      processAiResult(result);
+      const { texte } = response.data;
+      form.setFieldsValue({ contenu_texte: texte });
+      message.success('Transcription réussie');
       setAiWorkflowStep(2);
-      message.success("Analyse IA terminée avec succès");
     } catch (error) {
-      console.error("Erreur analyse IA:", error);
-      message.error(`Échec de l'analyse IA: ${error.message}`);
-      simulateAiAnalysis();
+      console.error(error);
+      message.error('Erreur lors de la transcription');
     } finally {
       setAiProcessing(false);
     }
   };
 
   const processAiResult = (result) => {
-    console.log("Résultat IA brut:", result);
+      console.log("🔍 Résultat IA brut:", result);
+      
+      // La structure retournée par votre backend
+      const {
+          texte_ocr,
+          classification,
+          priorite,
+          analyse,
+          expediteur,
+          structured_info
+      } = result;
 
-    const classification = result.classification || {};
-    const priorite = result.priorite || {};
-    const analyse = result.analyse || {};
+      // Extraire les informations de classification
+      const classData = classification || {};
+      const prioriteData = priorite || {};
+      const analyseData = analyse || {};
+      const expediteurData = expediteur || {};
+      const structuredData = structured_info || {};
 
-    const confidenceCategorie = classification.confiance_categorie || 0.3;
-    const confidenceService = classification.confiance_service || 0.3;
-    const confidencePriorite = priorite.confiance || 0.5;
-    const avgConfidence = (confidenceCategorie + confidenceService + confidencePriorite) / 3;
+      // Calculer la confiance moyenne
+      const confianceCategorie = classData.confiance_categorie || 0.3;
+      const confianceService = classData.confiance_service || 0.3;
+      const confiancePriorite = prioriteData.confiance || 0.5;
+      const avgConfidence = (confianceCategorie + confianceService + confiancePriorite) / 3;
 
-    let detectedDate = null;
-    if (result.analyse?.resume) {
-      const dateMatch = result.analyse.resume.match(/\d{2}\/\d{2}\/\d{4}|\d{4}-\d{2}-\d{2}/);
-      if (dateMatch) {
-        try {
-          detectedDate = dayjs(dateMatch[0]);
-        } catch (e) {
-          console.log("Erreur parsing date:", e);
-        }
+      // Déterminer la date
+      let detectedDate = dayjs();
+      if (structuredData.date) {
+          try {
+              detectedDate = dayjs(structuredData.date);
+          } catch (e) {
+              console.log("Erreur parsing date:", e);
+          }
       }
-    }
 
-    const suggestions = {
-      objet: result.objet || classification.objet || "Document analysé",
-      expediteur_nom: result.expediteur?.nom || classification.expediteur_nom || "Expéditeur",
-      expediteur_email: result.expediteur?.email || classification.expediteur_email || "",
-      expediteur_adresse: result.expediteur?.adresse || classification.expediteur_adresse || "",
-      expediteur_telephone: result.expediteur?.telephone || classification.expediteur_telephone || "",
-      date_reception: detectedDate || dayjs(),
-      canal: classification.canal || "physique",
-      confidentialite: result.confidentialite_suggestion || classification.confidentialite || "normale",
-      priorite: (priorite.niveau || "normale").toLowerCase(),
-      category: classification.categorie_id || null,
-      service_id: classification.service_id || null,
-      contenu_texte: analyse.resume || result.texte_ocr || "",
-      mots_cles: analyse.mots_cles || [],
-      priorite_raison: priorite.raison || "Analyse automatique",
-    };
+      // Construire les suggestions pour le formulaire
+      const suggestions = {
+          // Objet - priorité à l'objet extrait, sinon celui du formulaire
+          objet: classData.objet_extrait || 
+                analyseData.objet || 
+                result.objet || 
+                "Document analysé",
+          
+          // Expéditeur
+          expediteur_nom: expediteurData.nom || 
+                          classData.expediteur_nom || 
+                          "Expéditeur inconnu",
+          
+          expediteur_email: expediteurData.email || 
+                            classData.expediteur_email || 
+                            "",
+          
+          expediteur_telephone: expediteurData.telephone || 
+                                classData.expediteur_telephone || 
+                                "",
+          
+          expediteur_adresse: expediteurData.adresse || 
+                              classData.expediteur_adresse || 
+                              "",
+          
+          // Date
+          date_reception: detectedDate,
+          
+          // Canal par défaut
+          canal: "physique",
+          
+          // Confidentialité
+          confidentialite: (result.confidentialite_suggestion || "normale").toLowerCase(),
+          
+          // Priorité
+          priorite: (prioriteData.niveau || "normale").toLowerCase(),
+          
+          // Catégorie et service (utiliser les IDs si disponibles)
+          category: classData.categorie_id || null,
+          service_id: classData.service_id || null,
+          
+          // Contenu texte
+          contenu_texte: analyseData.resume || 
+                        texte_ocr || 
+                        "",
+          
+          // Mots-clés
+          mots_cles: analyseData.mots_cles || 
+                    structuredData.mots_cles || 
+                    [],
+          
+          // Raison de la priorité
+          priorite_raison: prioriteData.raison || "Analyse automatique",
+      };
 
-    setAiResult(suggestions);
-    setAiConfidence(avgConfidence);
-    form.setFieldsValue(suggestions);
+      console.log("✅ Suggestions générées:", suggestions);
+      
+      setAiResult(suggestions);
+      setAiConfidence(avgConfidence);
+      form.setFieldsValue(suggestions);
 
-    if (analyse.mots_cles?.length > 0) {
-      message.info(`Mots-clés détectés: ${analyse.mots_cles.slice(0, 5).join(", ")}`);
-    }
+      if (suggestions.mots_cles.length > 0) {
+          message.info(`Mots-clés détectés: ${suggestions.mots_cles.slice(0, 5).join(", ")}`);
+      }
   };
 
   const simulateAiAnalysis = () => {
@@ -457,6 +506,24 @@ const CourrierEntrants = () => {
           showIcon
         />
       </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 30 }}>
+        <Button
+          type="default"
+          icon={<RobotOutlined />}
+          onClick={analyzeWithGemini}
+          disabled={!uploadedFile}
+          loading={aiProcessing}
+        >
+          Transcrire avec Gemini
+        </Button>
+        <Button
+          type="primary"
+          onClick={() => setAiWorkflowStep(1)}
+          disabled={!uploadedFile}
+        >
+          Continuer vers l'analyse (IA actuelle)
+        </Button>
+      </div>
     </div>
   );
 
@@ -471,7 +538,7 @@ const CourrierEntrants = () => {
         type="primary"
         size="large"
         icon={<RobotOutlined />}
-        onClick={analyzeWithAI}
+        onClick={analyzeWithGemini} 
         loading={aiProcessing}
         disabled={!uploadedFile}
         style={{ marginBottom: 20 }}
@@ -666,7 +733,7 @@ const CourrierEntrants = () => {
     <Card
       title={
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <FileTextOutlined />
+          {/* <FileTextOutlined /> */}
           <span>Courriers entrants</span>
           <Tag color="blue" style={{ marginLeft: "10px" }}>
             Total: {courriers.length}

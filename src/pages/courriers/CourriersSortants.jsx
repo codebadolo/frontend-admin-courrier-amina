@@ -349,7 +349,8 @@ const CourriersSortants = () => {
     {
       title: "Objet",
       dataIndex: "objet",
-      ellipsis: true,
+      // ellipsis: true,
+      width: 120,
       render: (objet, record) => (
         <div>
           <div style={{ fontWeight: 500 }}>{objet}</div>
@@ -399,15 +400,15 @@ const CourriersSortants = () => {
       dataIndex: "priorite",
       render: (priorite) => {
         const config = {
-          urgente: { color: 'red', icon: '🔥' },
-          haute: { color: 'orange', icon: '⚠️' },
-          normale: { color: 'blue', icon: '📄' },
-          basse: { color: 'green', icon: '📋' }
+          urgente: { color: 'red'  },
+          haute: { color: 'orange'  },
+          normale: { color: 'blue' },
+          basse: { color: 'green' }
         };
         const cfg = config[priorite] || config.normale;
         return (
           <Tag color={cfg.color}>
-            {cfg.icon} {priorite}
+            {priorite}
           </Tag>
         );
       },
@@ -425,7 +426,7 @@ const CourriersSortants = () => {
       dataIndex: "date_envoi",
       render: (date) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <ClockCircleOutlined style={{ color: '#666' }} />
+          {/* <ClockCircleOutlined style={{ color: '#666' }} /> */}
           {dayjs(date).format('DD/MM/YYYY')}
         </div>
       ),
@@ -498,7 +499,6 @@ const CourriersSortants = () => {
     <Card
       title={
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <SendOutlined />
           <span>Courriers sortants</span>
           <Badge 
             count={courriers.length} 

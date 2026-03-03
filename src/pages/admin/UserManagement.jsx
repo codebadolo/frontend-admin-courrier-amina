@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import dayjs from "dayjs"; // importation pour le formatage des dates
 import {
   Card,
   CardHeader,
@@ -177,6 +178,8 @@ const UserManagement = () => {
                 <TableHead>Email</TableHead>
                 <TableHead>Nom complet</TableHead>
                 <TableHead>Rôle</TableHead>
+                <TableHead>Date de création</TableHead>
+                <TableHead>Dernière connexion</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -187,6 +190,12 @@ const UserManagement = () => {
                   <TableCell>{user.email}</TableCell>
                   <TableCell>{user.prenom} {user.nom}</TableCell>
                   <TableCell>{user.role}</TableCell>
+                  <TableCell>
+                    {user.created_at ? dayjs(user.created_at).format('DD/MM/YYYY HH:mm') : '-'}
+                  </TableCell>
+                  <TableCell>
+                    {user.last_login ? dayjs(user.last_login).format('DD/MM/YYYY HH:mm')   : 'Jamais'}
+                  </TableCell>
                   <TableCell className="flex gap-2">
 
                     {/* EDIT BUTTON */}
@@ -221,7 +230,7 @@ const UserManagement = () => {
 
               {users.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan="4" className="text-center py-4 text-gray-500">
+                  <TableCell colSpan="6" className="text-center py-4 text-gray-500">
                     Aucun utilisateur trouvé.
                   </TableCell>
                 </TableRow>

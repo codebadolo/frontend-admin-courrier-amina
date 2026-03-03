@@ -35,9 +35,11 @@ const DetailCourrierInterne = () => {
   const [transmissionModal, setTransmissionModal] = useState(false);
   const [visaModal, setVisaModal] = useState(false);
   const [validationModal, setValidationModal] = useState(false);
+  const [traitementModalVisible, setTraitementModalVisible] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [commentaire, setCommentaire] = useState("");
+  const [traitementNote, setTraitementNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -52,6 +54,7 @@ const DetailCourrierInterne = () => {
         `http://localhost:8000/api/courriers/courriers/${id}/`,
         { headers: { Authorization: `Token ${token}` } }
       );
+      console.log("Courrier reçu :", response.data);
       setCourrier(response.data);
     } catch (error) {
       message.error("Erreur chargement courrier");
@@ -112,6 +115,25 @@ const DetailCourrierInterne = () => {
     }
   };
 
+  const handleTraiter = async () => {
+    setSubmitting(true);
+    try {
+      const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
+      await axios.post(
+        `http://localhost:8000/api/courriers/courriers/${id}/traiter/`,
+        { commentaire: traitementNote },
+        { headers: { Authorization: `Token ${token}` } }
+      );
+      message.success("Courrier pris en charge");
+      setTraitementModalVisible(false);
+      loadCourrier();
+    } catch (error) {
+      message.error("Erreur lors du traitement");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const loadServices = async () => {
     try {
       const data = await getServicesDestinataires(id);
@@ -156,9 +178,16 @@ const DetailCourrierInterne = () => {
                 </Tag>
               </Space>
               <h2>{courrier.objet}</h2>
-              <Space>
+              <Space wrap>
                 <UserOutlined /> <strong>De:</strong> {courrier.created_by_detail?.prenom} {courrier.created_by_detail?.nom}
-                <TeamOutlined style={{ marginLeft: 16 }} /> <strong>Service:</strong> {courrier.service_actuel_detail?.nom}
+                <TeamOutlined style={{ marginLeft: 16 }} /> <strong>Service rédacteur:</strong>{' '}
+                {courrier.created_by_detail?.service_nom ||
+                 courrier.created_by_detail?.service?.nom ||
+                 'Non spécifié'}
+                <TeamOutlined style={{ marginLeft: 16 }} /> <strong>Service destinataire:</strong>{' '}
+                {courrier.service_actuel_detail?.nom ||
+                 courrier.service_impute_detail?.nom ||
+                 'Non spécifié'}
               </Space>
             </Space>
           </Col>
@@ -166,6 +195,13 @@ const DetailCourrierInterne = () => {
             <Space>
               <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>
                 Retour
+              </Button>
+              <Button
+                type="primary"
+                icon={<CheckCircleOutlined />}
+                onClick={() => navigate(`/courriers-internes/${id}/traitement`)}
+              >
+                Traiter
               </Button>
               <Button
                 type="primary"
@@ -200,10 +236,17 @@ const DetailCourrierInterne = () => {
                 <Descriptions.Item label="Expéditeur">
                   {courrier.created_by_detail?.prenom} {courrier.created_by_detail?.nom}
                 </Descriptions.Item>
-                <Descriptions.Item label="Service actuel">
-                  {courrier.service_actuel_detail?.nom || '-'}
+                <Descriptions.Item label="Service rédacteur">
+                  {courrier.created_by_detail?.service_nom ||
+                   courrier.created_by_detail?.service?.nom ||
+                   'Non spécifié'}
                 </Descriptions.Item>
-                <Descriptions.Item label="Responsable">
+                <Descriptions.Item label="Service destinataire (actuel)">
+                  {courrier.service_actuel_detail?.nom ||
+                   courrier.service_impute_detail?.nom ||
+                   '-'}
+                </Descriptions.Item>
+                <Descriptions.Item label="Responsable actuel">
                   {courrier.responsable_actuel_detail?.prenom} {courrier.responsable_actuel_detail?.nom || 'Non assigné'}
                 </Descriptions.Item>
                 <Descriptions.Item label="Date création">
@@ -234,7 +277,10 @@ const DetailCourrierInterne = () => {
 
           {courrier.contenu_texte && (
             <Card title="Contenu" style={{ marginTop: 24 }}>
-              <div style={{ whiteSpace: 'pre-wrap' }}>{courrier.contenu_texte}</div>
+              <div
+                style={{ padding: 16, background: '#fafafa', borderRadius: 4 }}
+                dangerouslySetInnerHTML={{ __html: courrier.contenu_texte }}
+              />
             </Card>
           )}
         </TabPane>
@@ -378,6 +424,23 @@ const DetailCourrierInterne = () => {
           placeholder="Commentaire (optionnel)"
           value={commentaire}
           onChange={(e) => setCommentaire(e.target.value)}
+        />
+      </Modal>
+
+      {/* Modal Traitement */}
+      <Modal
+        title="Traiter le courrier"
+        open={traitementModalVisible}
+        onCancel={() => setTraitementModalVisible(false)}
+        onOk={handleTraiter}
+        okText="Confirmer"
+        confirmLoading={submitting}
+      >
+        <TextArea
+          rows={3}
+          placeholder="Note de traitement (optionnel)"
+          value={traitementNote}
+          onChange={(e) => setTraitementNote(e.target.value)}
         />
       </Modal>
     </div>

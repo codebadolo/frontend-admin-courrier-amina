@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Card, Form, Input, Button, Space, Select, DatePicker,
-  Row, Col, Typography, Tabs, message,  Tag,
+  Row, Col, Typography, Tabs, message, Tag,
   Checkbox, Modal, Descriptions, Alert
 } from "antd";
 import {
@@ -13,16 +13,21 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import dayjs from "dayjs";
 import axios from "axios";
+import { Editor } from "react-draft-wysiwyg";
+import { EditorState, ContentState, convertToRaw, convertFromHTML, onEditorStateChange } from "draft-js";
+import draftToHtml from "draftjs-to-html";
+// import Editor from 'react-draft-wysiwyg';
+import "react-draft-wysiwyg/dist/react-draft-wysiwyg.css";
+import DOMPurify from "dompurify";
+
 
 const { Option } = Select;
 const { TextArea } = Input;
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 
-// Configuration de l'API
 const API_BASE = "http://localhost:8000/api";
 
-// Intercepteur pour ajouter le token
 axios.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
@@ -45,6 +50,7 @@ const RedactionCourrierSortant = () => {
   const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  const [editorState, setEditorState] = useState(EditorState.createEmpty());
   
   const navigate = useNavigate();
   const { id } = useParams();
@@ -58,6 +64,13 @@ const RedactionCourrierSortant = () => {
     loadCurrentUser();
     if (id) loadCourrier();
   }, [id]);
+
+  useEffect(() => {
+    // Synchroniser le contenu de l'éditeur avec le formulaire
+    const contentState = editorState.getCurrentContent();
+    const html = draftToHtml(convertToRaw(contentState));
+    form.setFieldsValue({ contenu_texte: html });
+  }, [editorState, form]);
 
   const loadCurrentUser = async () => {
     try {
@@ -110,6 +123,16 @@ const RedactionCourrierSortant = () => {
         contenu_texte: data.contenu_texte || "",
         signataire: data.signataire || "",
       });
+
+      // Initialiser l'éditeur avec le contenu HTML existant
+      if (data.contenu_texte) {
+        const blocksFromHTML = convertFromHTML(data.contenu_texte);
+        const contentState = ContentState.createFromBlockArray(
+          blocksFromHTML.contentBlocks,
+          blocksFromHTML.entityMap
+        );
+        setEditorState(EditorState.createWithContent(contentState));
+      }
       
       setValidationHistory(data.validations || []);
     } catch (error) {
@@ -153,7 +176,9 @@ const RedactionCourrierSortant = () => {
         
         <br/>
         
-        <p>${values.contenu_texte || "______________________________________________________________________\n______________________________________________________________________"}</p>
+        <div style="white-space: pre-wrap; line-height: 1.6;">
+          ${values.contenu_texte || "______________________________________________________________________\n______________________________________________________________________"}
+        </div>
         
         <br/>
         
@@ -209,7 +234,6 @@ const RedactionCourrierSortant = () => {
       setLoading(true);
       const values = await form.validateFields();
       
-      // Sauvegarder d'abord si c'est un nouveau courrier
       let courrierId = id;
       if (!courrierId) {
         const savedCourrier = await handleSaveAndGetId();
@@ -221,7 +245,6 @@ const RedactionCourrierSortant = () => {
         courrierId = savedCourrier.id;
       }
       
-      // Générer le PDF via l'API
       const response = await axios.get(
         `${API_BASE}/courriers/courriers/${courrierId}/export_pdf/`,
         { responseType: "blob" }
@@ -317,13 +340,12 @@ const RedactionCourrierSortant = () => {
   };
 
   // ============================================
-  // 6. SOUMISSION POUR VALIDATION (CORRIGÉ)
+  // 6. SOUMISSION POUR VALIDATION
   // ============================================
   const handleSubmitValidation = async () => {
     try {
       const values = await form.validateFields();
       
-      // Vérifier si le courrier existe déjà
       if (!id) {
         message.warning("Veuillez d'abord sauvegarder le courrier avant de le soumettre pour validation");
         return;
@@ -337,14 +359,10 @@ const RedactionCourrierSortant = () => {
         onOk: async () => {
           setLoading(true);
           try {
-            // URL CORRECTE avec l'ID
             await axios.post(
               `${API_BASE}/courriers/courriers/${id}/soumettre-validation/`,
-              { 
-                commentaire: values.commentaire_validation || "Soumis pour validation"
-              }
+              { commentaire: values.commentaire_validation || "Soumis pour validation" }
             );
-            
             message.success("Courrier soumis pour validation avec succès");
             navigate("/courriers-sortants");
           } catch (error) {
@@ -378,9 +396,7 @@ const RedactionCourrierSortant = () => {
     try {
       await axios.post(
         `${API_BASE}/courriers/courriers/${id}/signer/`,
-        { 
-          signature_data: { date: dayjs().format(), method: "electronique" }
-        }
+        { signature_data: { date: dayjs().format(), method: "electronique" } }
       );
       
       setValidationHistory([
@@ -406,7 +422,6 @@ const RedactionCourrierSortant = () => {
   // ============================================
   return (
     <div style={{ padding: 24 }}>
-      {/* En-tête */}
       <Card style={{ marginBottom: 24 }}>
         <Row gutter={24} align="middle">
           <Col span={12}>
@@ -563,9 +578,14 @@ const RedactionCourrierSortant = () => {
                       onChange={(val) => {
                         const modele = modeles.find(m => m.id === val);
                         if (modele) {
-                          form.setFieldsValue({
-                            contenu_texte: modele.contenu,
-                          });
+                          // Convertir le contenu HTML du modèle en EditorState
+                          const blocksFromHTML = convertFromHTML(modele.contenu);
+                          const contentState = ContentState.createFromBlockArray(
+                            blocksFromHTML.contentBlocks,
+                            blocksFromHTML.entityMap
+                          );
+                          setEditorState(EditorState.createWithContent(contentState));
+                          form.setFieldsValue({ contenu_texte: modele.contenu });
                         }
                       }}
                     >
@@ -574,10 +594,24 @@ const RedactionCourrierSortant = () => {
                       ))}
                     </Select>
                   </Form.Item>
-
-                  <Form.Item name="contenu_texte" label="Contenu">
-                    <TextArea rows={8} placeholder="Rédigez le contenu de votre courrier ici..." />
+                  <Form.Item name="contenu_texte" label="Contenu du courrier"
+                    required placeholder="Rédigez le contenu du courrier..."
+                    rules={[{ required: true, message: "Le contenu est obligatoire" }]}
+                    valuePropName="value"
+                    getValueFromEvent={(content) => content}
+                    style={{height : 500}}
+                    >
+                    <div style={{ border: '1px solid #d9d9d9', borderRadius: 6, height: 300, overflow: 'auto' }}>
+                      <Editor
+                        editorState={editorState}
+                        onEditorStateChange={setEditorState}
+                      />
+                    </div>
                   </Form.Item>
+
+                  {/* <Form.Item name="contenu_texte" hidden>
+                    <Input />
+                  </Form.Item> */}
 
                   <Form.Item name="formule_politesse" label="Formule de politesse">
                     <Select>
@@ -691,7 +725,6 @@ const RedactionCourrierSortant = () => {
         </Col>
       </Row>
 
-      {/* Modal de prévisualisation */}
       <Modal
         title="Prévisualisation du courrier"
         open={previewVisible}
@@ -717,13 +750,14 @@ const RedactionCourrierSortant = () => {
             background: "white",
             border: "1px solid #ddd",
             borderRadius: 4,
-            fontFamily: "Times New Roman, serif"
+            fontFamily: "Times New Roman, serif",
+            maxHeight: "60vh",
+            overflow: "auto"
           }}
           dangerouslySetInnerHTML={{ __html: previewHtml }}
         />
       </Modal>
 
-      {/* Modal de signature */}
       <Modal
         title="Signature électronique"
         open={signatureVisible}

@@ -36,6 +36,7 @@ import MesCourriersATraiter from "../pages/agent/MesCourriersATraiter";
 // import ListeCourriersInternes from "../pages/courriers/ListeCourriersInternes";
 import CreerCourrierInterne from "../pages/courriers/CreerCourrierInterne";
 import DetailCourrierInterne from "../pages/courriers/DetailCourrierInterne";
+import TraitementCourrierInterne from "../pages/courriers/TraitementCourrierInterne";
 
 const PrivateRoute = ({ children }) => {
   const { user } = useContext(AuthContext);
@@ -57,10 +58,7 @@ const AppRoutes = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/courriers-entrants" element={<CourrierEntrants />} />
         <Route path="/courriers-sortants" element={<CourriersSortants />} />
-<Route
-  path="/courriers-sortants/:id"
-  element={<DetailCourrierSortant />}
-/>
+        <Route path="/courriers-sortants/:id" element={<DetailCourrierSortant />} />
         <Route path="/courriers-internes" element={<CourriersInternes />} />
         <Route path="/workflow" element={<Workflow />} />
         <Route path="/courriers-entrants/:id" element={<CourrierEntrantDetail />} />
@@ -68,7 +66,6 @@ const AppRoutes = () => {
         <Route path="/archives" element={<Archives />} />
         <Route path="/administration" element={<Administrations />} />
         <Route path="/reports" element={<Reports />} />
-        {/* <Route path="/courriers-internes/creer" element={<CourrierInterneCreate />} /> */}
         <Route path="/services-admin" element={<Services />} />
         <Route path="/imputation" element={<ImputationDashboard />} />
         <Route path="/traitement/dashboard" element={<TraitementDashboard />} />
@@ -86,6 +83,7 @@ const AppRoutes = () => {
         {/* <Route path="/courriers-internes" element={<ListeCourriersInternes />} /> */}
         <Route path="/courriers-internes/creer" element={<CreerCourrierInterne />} />
         <Route path="/courriers-internes/:id" element={<DetailCourrierInterne />} />
+        <Route path="/courriers-internes/:id/traitement" element={<TraitementCourrierInterne />} />
         {/* Route spécifique admin */}
         <Route 
           path="/admin-dashboard" 

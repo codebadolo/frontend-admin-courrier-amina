@@ -93,7 +93,7 @@ const CourriersInternes = () => {
 
       setCourriers(data);
       filterCourriers(data, searchText, statusFilter, serviceFilter);
-      
+
       // Calculer les statistiques
       const stats = {
         total: data.length,
@@ -103,7 +103,7 @@ const CourriersInternes = () => {
         archive: data.filter(c => c.statut === 'archive').length
       };
       setStats(stats);
-      
+
     } catch (error) {
       console.error(error);
       message.error("Erreur lors du chargement des courriers internes");
@@ -117,26 +117,27 @@ const CourriersInternes = () => {
   // ----------------------------
   const filterCourriers = (data, search, status, service) => {
     let filtered = [...data];
-    
+
     if (search) {
-      filtered = filtered.filter(c => 
+      filtered = filtered.filter(c =>
         c.objet?.toLowerCase().includes(search.toLowerCase()) ||
         c.reference?.toLowerCase().includes(search.toLowerCase()) ||
         c.contenu_texte?.toLowerCase().includes(search.toLowerCase())
       );
     }
-    
+
     if (status) {
       filtered = filtered.filter(c => c.statut === status);
     }
-    
+
     if (service) {
-      filtered = filtered.filter(c => 
-        c.service_impute?.id === parseInt(service) ||
-        c.service_actuel?.id === parseInt(service)
+      const serviceIdNum = parseInt(service);
+      filtered = filtered.filter(c =>
+        c.service_impute === serviceIdNum ||
+        c.service_actuel === serviceIdNum
       );
     }
-    
+
     setFilteredCourriers(filtered);
   };
 
@@ -195,7 +196,7 @@ const CourriersInternes = () => {
       title: "Référence",
       dataIndex: "reference",
       key: "reference",
-      width: 140,
+      width: 100,
       render: (v) => <Tag color="blue">{v || '-'}</Tag>,
       sorter: (a, b) => (a.reference || '').localeCompare(b.reference || ''),
     },
@@ -204,6 +205,7 @@ const CourriersInternes = () => {
       dataIndex: "objet",
       key: "objet",
       ellipsis: true,
+      width: 150,
       render: (v, record) => (
         <Space direction="vertical" size={0}>
           <Text strong>{v || '-'}</Text>
@@ -217,23 +219,44 @@ const CourriersInternes = () => {
     },
     {
       title: "Service destinataire",
-      dataIndex: ["service_impute", "nom"],
+      dataIndex: "service_impute", // reçoit l'ID du service (nombre)
       key: "service",
-      width: 180,
-      render: (value, record) => (
-        <Space>
-          <TeamOutlined style={{ color: '#1890ff' }} />
-          <span>{value || record.service_actuel?.nom || '-'}</span>
-        </Space>
-      ),
+      width: 110,
+      render: (serviceId, record) => {
+        // Chercher le service par ID dans la liste chargée
+        if (serviceId) {
+          const service = services.find(s => s.id === serviceId);
+          if (service) {
+            return (
+              <Space>
+                <TeamOutlined style={{ color: '#1890ff' }} />
+                <span>{service.nom}</span>
+              </Space>
+            );
+          }
+        }
+        // Sinon, essayer service_actuel
+        if (record.service_actuel) {
+          const service = services.find(s => s.id === record.service_actuel);
+          if (service) {
+            return (
+              <Space>
+                <TeamOutlined style={{ color: '#1890ff' }} />
+                <span>{service.nom}</span>
+              </Space>
+            );
+          }
+        }
+        return <Tag color="default">Non imputé</Tag>;
+      },
     },
     {
       title: "Statut",
       dataIndex: "statut",
       key: "statut",
-      width: 130,
+      width: 70,
       render: (statut) => (
-        <Tag color={getStatusColor(statut)} icon={getStatusIcon(statut)}>
+        <Tag color={getStatusColor(statut)} >
           {getStatusLabel(statut)}
         </Tag>
       ),
@@ -249,7 +272,7 @@ const CourriersInternes = () => {
       title: "Priorité",
       dataIndex: "priorite",
       key: "priorite",
-      width: 100,
+      width: 80,
       render: (priorite) => {
         const colors = {
           urgente: 'red',
@@ -264,7 +287,7 @@ const CourriersInternes = () => {
       title: "Date",
       dataIndex: "created_at",
       key: "date",
-      width: 120,
+      width: 80,
       render: (date) => dayjs(date).format('DD/MM/YYYY'),
       sorter: (a, b) => dayjs(a.created_at).unix() - dayjs(b.created_at).unix(),
     },
@@ -272,7 +295,7 @@ const CourriersInternes = () => {
       title: "Échéance",
       dataIndex: "date_echeance",
       key: "echeance",
-      width: 100,
+      width: 70,
       render: (date) => {
         if (!date) return '-';
         const isLate = dayjs(date).isBefore(dayjs());
@@ -286,7 +309,7 @@ const CourriersInternes = () => {
     {
       title: "Actions",
       key: "actions",
-      width: 100,
+      width: 50,
       fixed: 'right',
       render: (_, record) => (
         <Space>
@@ -318,7 +341,7 @@ const CourriersInternes = () => {
           <Col span={12}>
             <Space size="large">
               <Title level={3} style={{ margin: 0 }}>
-                📄 Courriers internes
+                Courriers internes
               </Title>
               <Tag color="blue" style={{ fontSize: 14, padding: '4px 12px' }}>
                 Total: {stats.total}
@@ -327,8 +350,8 @@ const CourriersInternes = () => {
           </Col>
           <Col span={12} style={{ textAlign: 'right' }}>
             <Space>
-              <Button 
-                icon={<ReloadOutlined />} 
+              <Button
+                icon={<ReloadOutlined />}
                 onClick={loadCourriers}
               >
                 Actualiser
@@ -381,7 +404,7 @@ const CourriersInternes = () => {
                   <Option key={s.id} value={s.id}>{s.nom}</Option>
                 ))}
               </Select>
-              <Button 
+              <Button
                 icon={<FilterOutlined />}
                 onClick={() => {
                   setSearchText('');
@@ -397,23 +420,22 @@ const CourriersInternes = () => {
       </Card>
 
       {/* Tableau */}
-     
-        <Table
-          rowKey="id"
-          columns={columns}
-          dataSource={filteredCourriers}
-          loading={loading}
-          bordered
-          size="middle"
-          locale={{ emptyText: "Aucun courrier interne trouvé" }}
-          pagination={{ 
-            pageSize: 10,
-            showSizeChanger: true,
-            showTotal: (total) => `Total: ${total} courriers`,
-            showQuickJumper: true
-          }}
-          scroll={{ x: 1200 }}
-        />
+      <Table
+        rowKey="id"
+        columns={columns}
+        dataSource={filteredCourriers}
+        loading={loading}
+        bordered
+        size="middle"
+        locale={{ emptyText: "Aucun courrier interne trouvé" }}
+        pagination={{
+          pageSize: 10,
+          showSizeChanger: true,
+          showTotal: (total) => `Total: ${total} courriers`,
+          showQuickJumper: true
+        }}
+        scroll={{ x: 1200 }}
+      />
     </div>
   );
 };

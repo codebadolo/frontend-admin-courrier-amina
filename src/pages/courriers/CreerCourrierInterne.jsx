@@ -20,7 +20,6 @@ import {
   Modal,
   Spin,
   Radio,
-  Checkbox
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -30,21 +29,22 @@ import {
   LockOutlined,
   ThunderboltOutlined,
   CalendarOutlined,
-  SendOutlined,
   EyeOutlined,
   CopyOutlined,
   CheckCircleOutlined,
   UserOutlined,
-  SwapOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import dayjs from "dayjs";
 import locale from "antd/es/date-picker/locale/fr_FR";
+import { Editor } from 'react-draft-wysiwyg';
+import { EditorState, convertToRaw } from 'draft-js';
+import draftToHtml from 'draftjs-to-html';
+import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
 
 const { Text } = Typography;
-const { TextArea } = Input;
 const { Option } = Select;
 const { Step } = Steps;
 
@@ -63,10 +63,10 @@ const CreerCourrierInterne = () => {
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewHtml, setPreviewHtml] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
-  const [selectedService, setSelectedService] = useState(null);
-  const [imputationType, setImputationType] = useState("service"); // "service" ou "agent"
+  const [imputationType, setImputationType] = useState("service");
   const [selectedAgent, setSelectedAgent] = useState(null);
-  
+  const [editorState, setEditorState] = useState(() => EditorState.createEmpty());
+
   const navigate = useNavigate();
 
   // Générer une référence automatique
@@ -88,21 +88,6 @@ const CreerCourrierInterne = () => {
     loadCurrentUser();
     setGeneratedRef(generateReference());
   }, [navigate]);
-
-  // Mettre à jour le service sélectionné et charger les agents
-  useEffect(() => {
-    const serviceId = form.getFieldValue('service_id');
-    if (serviceId) {
-      const service = services.find(s => s.id === serviceId);
-      setSelectedService(service);
-      if (service) {
-        loadAgents(service.id);
-      }
-    } else {
-      setSelectedService(null);
-      setAgents([]);
-    }
-  }, [form, services]);
 
   const loadCurrentUser = async () => {
     try {
@@ -147,7 +132,7 @@ const CreerCourrierInterne = () => {
     try {
       const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
       const headers = { Authorization: `Token ${token}` };
-      
+
       const response = await axios.get(`${API_BASE}/users/users/`, {
         headers,
         params: {
@@ -155,7 +140,7 @@ const CreerCourrierInterne = () => {
           role__in: ['agent_service', 'collaborateur']
         }
       });
-      
+
       setAgents(response.data);
     } catch (error) {
       console.error("Erreur chargement agents:", error);
@@ -174,7 +159,7 @@ const CreerCourrierInterne = () => {
           fieldsToValidate.push('agent_id');
         }
       }
-      
+
       await form.validateFields(fieldsToValidate);
       setCurrentStep(currentStep + 1);
     } catch (error) {
@@ -203,8 +188,8 @@ const CreerCourrierInterne = () => {
         return;
       }
 
-      const serviceId = typeof values.service_id === 'string' 
-        ? parseInt(values.service_id) 
+      const serviceId = typeof values.service_id === 'string'
+        ? parseInt(values.service_id)
         : values.service_id;
 
       const selectedService = services.find(s => s.id === serviceId);
@@ -226,15 +211,15 @@ const CreerCourrierInterne = () => {
         date_reception: dayjs().format("YYYY-MM-DD"),
         expediteur_nom: currentUser ? `${currentUser.prenom} ${currentUser.nom}` : "Système",
         expediteur_email: currentUser?.email || "",
-        destinataire_nom: selectedService.nom
+        destinataire_nom: selectedService
       };
 
-      // 🔴 IMPUTATION : Si un agent est sélectionné, l'assigner directement
+      // Si un agent est sélectionné, l'assigner directement
       if (imputationType === 'agent' && values.agent_id) {
         const agentId = typeof values.agent_id === 'string'
           ? parseInt(values.agent_id)
           : values.agent_id;
-        
+
         const selectedAgent = agents.find(a => a.id === agentId);
         if (selectedAgent) {
           payload.responsable_actuel = agentId;
@@ -258,16 +243,16 @@ const CreerCourrierInterne = () => {
 
       console.log("📤 Payload envoyé:", payload);
 
-      const response = await axios.post(`${API_BASE}/courriers/courriers/`, payload, {
-        headers: { 
+      await axios.post(`${API_BASE}/courriers/courriers/`, payload, {
+        headers: {
           Authorization: `Token ${token}`,
           "Content-Type": "application/json"
         }
       });
 
       message.success({
-        content: imputationType === 'agent' 
-          ? "Courrier interne créé et assigné avec succès" 
+        content: imputationType === 'agent'
+          ? "Courrier interne créé et assigné avec succès"
           : "Courrier interne créé avec succès",
         icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
         duration: 3
@@ -275,10 +260,10 @@ const CreerCourrierInterne = () => {
 
       form.resetFields();
       setCurrentStep(0);
-      setSelectedService(null);
       setSelectedAgent(null);
+      setEditorState(EditorState.createEmpty());
       navigate("/courriers-internes");
-      
+
     } catch (error) {
       console.error("❌ Erreur:", error.response?.data);
       let errorMsg = "Erreur lors de la création";
@@ -305,12 +290,12 @@ const CreerCourrierInterne = () => {
     const lieu = "Ouagadougou";
 
     const serviceId = values.service_id;
-    const serviceIdNum = serviceId 
+    const serviceIdNum = serviceId
       ? (typeof serviceId === 'string' ? parseInt(serviceId) : serviceId)
       : null;
-    
-    const serviceNom = serviceIdNum 
-      ? services.find((s) => s.id === serviceIdNum)?.nom 
+
+    const serviceNom = serviceIdNum
+      ? services.find((s) => s.id === serviceIdNum)?.nom
       : "Service destinataire";
 
     let destinataireTexte = `Service ${serviceNom}`;
@@ -376,12 +361,12 @@ const CreerCourrierInterne = () => {
   // Prévisualisation
   const handlePreview = async () => {
     try {
-      const values = await form.validateFields(['objet', 'contenu_texte', 'service_id']);
+      const values = await form.validateFields(['objet', 'service_id', 'contenu_texte']);
       const html = genererDocument(values);
       setPreviewHtml(html);
       setPreviewVisible(true);
     } catch (error) {
-      message.warning("Veuillez remplir les champs obligatoires (Objet, Contenu, Service)");
+      message.warning("Veuillez remplir tous les champs obligatoires (Objet, Service, Contenu)");
     }
   };
 
@@ -448,8 +433,8 @@ const CreerCourrierInterne = () => {
           }}
           onValuesChange={(changedValues, allValues) => {
             if (changedValues.service_id) {
-              const service = services.find(s => s.id === changedValues.service_id);
-              setSelectedService(service);
+              // Charger les agents du service sélectionné
+              loadAgents(changedValues.service_id);
             }
           }}
         >
@@ -557,7 +542,7 @@ const CreerCourrierInterne = () => {
               </Select>
             </Form.Item>
 
-            {selectedService && (
+            {form.getFieldValue('service_id') && (
               <>
                 <Divider style={{ margin: '16px 0' }} />
                 
@@ -629,7 +614,7 @@ const CreerCourrierInterne = () => {
               </>
             )}
 
-            {!selectedService && (
+            {!form.getFieldValue('service_id') && (
               <Alert
                 type="warning"
                 message="Sélectionnez d'abord un service"
@@ -649,13 +634,32 @@ const CreerCourrierInterne = () => {
               style={{ marginBottom: 20 }}
             />
 
+            {/* Champ caché pour stocker le HTML généré par l'éditeur */}
             <Form.Item
-              label="Contenu"
               name="contenu_texte"
-              rules={[{ required: true, message: "Contenu requis" }]}
+              hidden
+              rules={[{ required: true, message: "Le contenu est obligatoire" }]}
             >
-              <TextArea rows={8} placeholder="Rédigez le contenu du courrier..." showCount maxLength={5000} />
+              <Input type="hidden" />
             </Form.Item>
+
+            <div style={{ marginBottom: 24 }}>
+              <Text strong>
+                Contenu du courrier <span style={{ color: '#ff4d4f' }}>*</span>
+              </Text>
+              <div style={{ border: '1px solid #d9d9d9', borderRadius: 6, height: 300, overflow: 'auto', marginTop: 8 }}>
+                <Editor
+                  editorState={editorState}
+                  onEditorStateChange={(newState) => {
+                    setEditorState(newState);
+                    // Convertir le contenu en HTML et mettre à jour le champ caché
+                    const contentHTML = draftToHtml(convertToRaw(newState.getCurrentContent()));
+                    form.setFieldsValue({ contenu_texte: contentHTML });
+                  }}
+                  placeholder="Rédigez le contenu du courrier..."
+                />
+              </div>
+            </div>
 
             <Form.Item
               label="Formule de politesse"
@@ -697,11 +701,16 @@ const CreerCourrierInterne = () => {
                 <div>
                   <Text type="secondary">Service destinataire:</Text>
                   <div>
-                    {selectedService ? (
-                      <Tag color="green" icon={<TeamOutlined />}>{selectedService.nom}</Tag>
-                    ) : (
-                      <Tag color="orange">Non sélectionné</Tag>
-                    )}
+                    {(() => {
+                      const serviceId = form.getFieldValue('service_id');
+                      if (!serviceId) return <Tag color="orange">Non sélectionné</Tag>;
+                      const service = services.find(s => s.id === serviceId);
+                      return service ? (
+                        <Tag color="green" icon={<TeamOutlined />}>{service.nom}</Tag>
+                      ) : (
+                        <Tag color="orange">Service inconnu</Tag>
+                      );
+                    })()}
                   </div>
                 </div>
                 {imputationType === 'agent' && selectedAgent && (

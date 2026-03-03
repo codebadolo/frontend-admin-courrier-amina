@@ -48,11 +48,6 @@ const Header = ({ collapsed, setCollapsed, user }) => {
       onClick: () => setProfileModalVisible(true)
     },
     {
-      key: 'settings',
-      label: 'Paramètres',
-      icon: <SettingOutlined />
-    },
-    {
       type: 'divider'
     },
     {
