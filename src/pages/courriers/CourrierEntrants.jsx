@@ -147,6 +147,8 @@ const CourrierEntrants = () => {
 
       const { texte, extraction } = data;
       console.log("Extraction reçue :", extraction);
+      console.log("Listes des catégories:", categories);
+      console.log("Listes des services:", services);
 
       // Traitement de la date
       let dateReception = dayjs();
@@ -171,23 +173,69 @@ const CourrierEntrants = () => {
         priorite: (extraction.priorite_niveau || "normale").toLowerCase(),
       };
 
-      // Mappage de la catégorie (si présente)
+      // Mapping manuel des catégories
+      const categoryMapping = {
+        "administratif": "Administration",
+        "admin": "Administration",
+        "administration": "Administration",
+        "rh": "Ressources humaines",
+        "ressources humaines": "Ressources humaines",
+        "finance": "Finance",
+        "financier": "Finance",
+        "technique": "Technique",
+        "tech": "Technique",
+        "communication": "Communication",
+        "com": "Communication",
+        "juridique": null,
+      };
+
+      // Mappage de la catégorie
       if (extraction.categorie_suggeree && categories.length > 0) {
-        const catName = extraction.categorie_suggeree.trim().toLowerCase();
-        const cat = categories.find(c => c.nom && c.nom.toLowerCase() === catName);
-        if (cat) {
-          suggestions.category = cat.id;
-          console.log("Catégorie mappée :", cat.nom);
+        const catSugg = extraction.categorie_suggeree.trim().toLowerCase();
+        let categoryId = null;
+        
+        // 1. Vérifier le mapping manuel
+        const mappedCategoryName = categoryMapping[catSugg];
+        if (mappedCategoryName) {
+          const cat = categories.find(c => 
+            c.name && c.name.toLowerCase() === mappedCategoryName.toLowerCase()
+          );
+          if (cat) categoryId = cat.id;
+        }
+        
+        // 2. Si pas trouvé, recherche partielle
+        if (!categoryId) {
+          const cat = categories.find(c => {
+            if (!c.name) return false;
+            const catName = c.name.toLowerCase();
+            return catName.includes(catSugg) || catSugg.includes(catName);
+          });
+          if (cat) categoryId = cat.id;
+        }
+        
+        if (categoryId) {
+          suggestions.category = categoryId;
+          console.log("Catégorie mappée :", categoryId);
+        } else {
+          console.warn("Aucune catégorie trouvée pour :", extraction.categorie_suggeree);
         }
       }
 
-      // Mappage du service (si présent)
+      // Mappage du service
       if (extraction.service_suggere && services.length > 0) {
-        const servName = extraction.service_suggere.trim().toLowerCase();
-        const serv = services.find(s => s.nom && s.nom.toLowerCase() === servName);
+        const servSugg = extraction.service_suggere.trim().toLowerCase();
+        
+        const serv = services.find(s => {
+          if (!s.nom) return false;
+          const servName = s.nom.toLowerCase();
+          return servName.includes(servSugg) || servSugg.includes(servName);
+        });
+        
         if (serv) {
           suggestions.service_id = serv.id;
           console.log("Service mappé :", serv.nom);
+        } else {
+          console.warn("Aucun service trouvé pour :", extraction.service_suggere);
         }
       }
 
@@ -207,7 +255,6 @@ const CourrierEntrants = () => {
       setAiProcessing(false);
     }
   };
-
 
   const processAiResult = (result) => {
       console.log("Résultat IA brut:", result);
