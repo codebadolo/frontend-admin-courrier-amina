@@ -19,7 +19,7 @@ import {
   SettingOutlined, DatabaseOutlined, NumberOutlined, 
   CopyOutlined as CopyIcon, InfoOutlined, FilePdfOutlined,
   FileImageOutlined, FileWordOutlined, FileExcelOutlined,
-  ToolOutlined
+  ToolOutlined, SendOutlined, RobotOutlined
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -289,6 +289,86 @@ const CourrierEntrantDetail = () => {
                   </Space>
                 </Col>
               </Row>
+                {/* Infos supplémentaires - Nouvelle ligne */}
+                <Row gutter={24} style={{ marginTop: 20 }}>
+                  <Col span={8}>
+                    <Space direction="vertical" size={2}>
+                      <Text type="secondary" style={{ fontSize: '12px' }}>Contact expéditeur</Text>
+                      <Space direction="vertical" size={2} style={{ marginLeft: 8 }}>
+                        {courrier.expediteur_telephone && (
+                          <Space>
+                            <PhoneOutlined style={{ color: '#666' }} />
+                            <Text>{courrier.expediteur_telephone}</Text>
+                          </Space>
+                        )}
+                        {courrier.expediteur_adresse && (
+                          <Space>
+                            <EnvironmentOutlined style={{ color: '#666' }} />
+                            <Text>{courrier.expediteur_adresse}</Text>
+                          </Space>
+                        )}
+                      </Space>
+                    </Space>
+                  </Col>
+
+                  <Col span={8}>
+                    <Space direction="vertical" size={2}>
+                      <Text type="secondary" style={{ fontSize: '12px' }}>Dates importantes</Text>
+                      <Space direction="vertical" size={2} style={{ marginLeft: 8 }}>
+                        {courrier.date_envoi && (
+                          <Space>
+                            <SendOutlined style={{ color: '#666' }} />
+                            <Text>Envoi: {dayjs(courrier.date_envoi).format('DD/MM/YYYY')}</Text>
+                          </Space>
+                        )}
+                        {courrier.date_echeance && (
+                          <Space>
+                            <ClockCircleOutlined style={{ color: '#fa8c16' }} />
+                            <Text>Échéance: {dayjs(courrier.date_echeance).format('DD/MM/YYYY')}</Text>
+                          </Space>
+                        )}
+                        {courrier.date_cloture && (
+                          <Space>
+                            <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                            <Text>Clôture: {dayjs(courrier.date_cloture).format('DD/MM/YYYY')}</Text>
+                          </Space>
+                        )}
+                      </Space>
+                    </Space>
+                  </Col>
+
+                  <Col span={8}>
+                    <Space direction="vertical" size={2}>
+                      <Text type="secondary" style={{ fontSize: '12px' }}>Classification</Text>
+                      <Space direction="vertical" size={2} style={{ marginLeft: 8 }}>
+                        {courrier.category_detail && (
+                          <Space>
+                            <AppstoreOutlined style={{ color: '#666' }} />
+                            <Text>Catégorie: {courrier.category_detail.nom}</Text>
+                          </Space>
+                        )}
+                        {courrier.meta_analyse && courrier.meta_analyse.categorie_suggeree && (
+                          <Space>
+                            <RobotOutlined style={{ color: '#722ed1' }} />
+                            <Text>IA suggère: {courrier.meta_analyse.categorie_suggeree}</Text>
+                          </Space>
+                        )}
+                        <Space>
+                          <SafetyOutlined style={{ color: '#666' }} />
+                          <Text>Confidentialité: {courrier.confidentialite}</Text>
+                        </Space>
+                        <Space>
+                          <AlertOutlined style={{ color: '#666' }} />
+                          <Text>Priorité: {courrier.priorite}</Text>
+                        </Space>
+                        <Space>
+                          <MailOutlined style={{ color: '#666' }} />
+                          <Text>Canal: {courrier.canal}</Text>
+                        </Space>
+                      </Space>
+                    </Space>
+                  </Col>
+                </Row>
             </Space>
           </Col>
 
