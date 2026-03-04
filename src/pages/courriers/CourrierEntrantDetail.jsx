@@ -85,6 +85,8 @@ const CourrierEntrantDetail = () => {
           const pieces = await getPiecesJointes(numericId);
           setPiecesJointes(pieces);
         } catch (pieceError) {
+          console.log("Courrier chargé :", courrierData);
+          console.log("Contenu texte :", courrierData.contenu_texte); 
           console.warn("Erreur chargement pièces jointes:", pieceError);
         }
       }

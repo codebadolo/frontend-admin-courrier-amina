@@ -138,9 +138,67 @@ const CourrierEntrants = () => {
       const response = await axios.post('/courriers/ocr-gemini/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      const { texte } = response.data;
-      form.setFieldsValue({ contenu_texte: texte });
-      message.success('Transcription réussie');
+      const data = response.data;
+      console.log("Réponse Gemini brute :", data);
+
+      if (!data.texte || !data.extraction) {
+        throw new Error("Format de réponse inattendu");
+      }
+
+      const { texte, extraction } = data;
+      console.log("Extraction reçue :", extraction);
+
+      // Traitement de la date
+      let dateReception = dayjs();
+      if (extraction.date_courrier) {
+        const parsed = dayjs(extraction.date_courrier);
+        if (parsed.isValid()) {
+          dateReception = parsed;
+        }
+      }
+
+      // Construction des suggestions (tous les champs texte)
+      const suggestions = {
+        objet: extraction.objet || "",
+        expediteur_nom: extraction.expediteur_nom || "",
+        expediteur_email: extraction.expediteur_email || "",
+        expediteur_telephone: extraction.expediteur_telephone || "",
+        expediteur_adresse: extraction.expediteur_adresse || "",
+        date_reception: dateReception,
+        contenu_texte: texte,
+        canal: "physique",
+        confidentialite: "normale",
+        priorite: (extraction.priorite_niveau || "normale").toLowerCase(),
+      };
+
+      // Mappage de la catégorie (si présente)
+      if (extraction.categorie_suggeree && categories.length > 0) {
+        const catName = extraction.categorie_suggeree.trim().toLowerCase();
+        const cat = categories.find(c => c.nom && c.nom.toLowerCase() === catName);
+        if (cat) {
+          suggestions.category = cat.id;
+          console.log("Catégorie mappée :", cat.nom);
+        }
+      }
+
+      // Mappage du service (si présent)
+      if (extraction.service_suggere && services.length > 0) {
+        const servName = extraction.service_suggere.trim().toLowerCase();
+        const serv = services.find(s => s.nom && s.nom.toLowerCase() === servName);
+        if (serv) {
+          suggestions.service_id = serv.id;
+          console.log("Service mappé :", serv.nom);
+        }
+      }
+
+      console.log("Suggestions construites :", suggestions);
+
+      // Mettre à jour le formulaire
+      form.setFieldsValue(suggestions);
+      setAiResult({ ...suggestions, ...extraction });
+      setAiConfidence(0.8);
+
+      message.success('Transcription et analyse réussies');
       setAiWorkflowStep(2);
     } catch (error) {
       console.error(error);
@@ -150,8 +208,9 @@ const CourrierEntrants = () => {
     }
   };
 
+
   const processAiResult = (result) => {
-      console.log("🔍 Résultat IA brut:", result);
+      console.log("Résultat IA brut:", result);
       
       // La structure retournée par votre backend
       const {
@@ -293,6 +352,7 @@ const CourrierEntrants = () => {
       formData.append("category", values.category);
       formData.append("service_impute", values.service_id);
       formData.append("type", "entrant");
+      formData.append("contenu_texte", values.contenu_texte || "");
       // Flags
       formData.append("ocr", "true");
       formData.append("classifier", "true");
