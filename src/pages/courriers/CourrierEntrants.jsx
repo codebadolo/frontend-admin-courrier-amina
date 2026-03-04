@@ -160,6 +160,14 @@ const CourrierEntrants = () => {
       }
 
       // Construction des suggestions (tous les champs texte)
+      let telephone = extraction.expediteur_telephone || "";
+        // Nettoyer : ne garder que les chiffres, espaces, +, -
+      telephone = telephone.replace(/[^\d\s\+\-]/g, '').trim();
+      if (telephone.length > 20) {
+        telephone = telephone.substring(0, 20);
+      }
+
+      // Construction des suggestions (tous les champs texte)
       const suggestions = {
         objet: extraction.objet || "",
         expediteur_nom: extraction.expediteur_nom || "",
@@ -256,6 +264,7 @@ const CourrierEntrants = () => {
     }
   };
 
+  
   const processAiResult = (result) => {
       console.log("Résultat IA brut:", result);
       
@@ -385,13 +394,21 @@ const CourrierEntrants = () => {
       const values = await form.validateFields();
       setLoading(true);
 
+      // Fonction de nettoyage du téléphone
+      const nettoyerTelephone = (tel) => {
+        if (!tel) return "";
+        // Garde les chiffres, le + et les espaces
+        const cleaned = tel.replace(/[^\d+\s]/g, '').trim();
+        // Limite à 20 caractères
+        return cleaned.length > 20 ? cleaned.substring(0, 20) : cleaned;
+      };
+
       const formData = new FormData();
-      // Champs obligatoires
       formData.append("objet", values.objet);
       formData.append("expediteur_nom", values.expediteur_nom);
       formData.append("expediteur_email", values.expediteur_email || "");
       formData.append("expediteur_adresse", values.expediteur_adresse || "");
-      formData.append("expediteur_telephone", values.expediteur_telephone || "");
+      formData.append("expediteur_telephone", nettoyerTelephone(values.expediteur_telephone));
       formData.append("date_reception", values.date_reception.format("YYYY-MM-DD"));
       formData.append("canal", values.canal);
       formData.append("confidentialite", values.confidentialite);
@@ -400,7 +417,6 @@ const CourrierEntrants = () => {
       formData.append("service_impute", values.service_id);
       formData.append("type", "entrant");
       formData.append("contenu_texte", values.contenu_texte || "");
-      // Flags
       formData.append("ocr", "true");
       formData.append("classifier", "true");
       formData.append("creer_workflow", "true");
@@ -410,15 +426,22 @@ const CourrierEntrants = () => {
       }
 
       const nouveauCourrier = await createCourrier(formData);
-      navigate(`/traitement/${nouveauCourrier.id}/detail/`);
       message.success("Courrier créé avec succès grâce à l'IA !");
       setAiWorkflowVisible(false);
       loadCourriers();
-      // Redirection vers le module de traitement
       navigate(`/traitement/courriers/${nouveauCourrier.id}`);
     } catch (error) {
       console.error("Erreur création:", error);
-      message.error("Erreur lors de la création du courrier");
+      if (error.response?.data) {
+        const erreurs = error.response.data;
+        if (erreurs.expediteur_telephone) {
+          message.error(`Téléphone invalide : ${erreurs.expediteur_telephone[0]}`);
+        } else {
+          message.error("Erreur lors de la création du courrier");
+        }
+      } else {
+        message.error("Erreur lors de la création du courrier");
+      }
     } finally {
       setLoading(false);
     }
