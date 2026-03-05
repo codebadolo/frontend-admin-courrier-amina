@@ -394,12 +394,24 @@ const CourrierEntrants = () => {
       const values = await form.validateFields();
       setLoading(true);
 
-      // Fonction de nettoyage du téléphone
+      // Vérification des champs obligatoires
+      if (!values.objet || !values.expediteur_nom || !values.date_reception) {
+        message.error("Champs obligatoires manquants");
+        setLoading(false);
+        return;
+      }
+
+      // Vérification de la date
+      if (!values.date_reception.isValid()) {
+        message.error("Date de réception invalide");
+        setLoading(false);
+        return;
+      }
+
+      // Nettoyage du téléphone
       const nettoyerTelephone = (tel) => {
         if (!tel) return "";
-        // Garde les chiffres, le + et les espaces
         const cleaned = tel.replace(/[^\d+\s]/g, '').trim();
-        // Limite à 20 caractères
         return cleaned.length > 20 ? cleaned.substring(0, 20) : cleaned;
       };
 
@@ -410,11 +422,14 @@ const CourrierEntrants = () => {
       formData.append("expediteur_adresse", values.expediteur_adresse || "");
       formData.append("expediteur_telephone", nettoyerTelephone(values.expediteur_telephone));
       formData.append("date_reception", values.date_reception.format("YYYY-MM-DD"));
-      formData.append("canal", values.canal);
-      formData.append("confidentialite", values.confidentialite);
-      formData.append("priorite", values.priorite);
-      formData.append("category", values.category);
-      formData.append("service_impute", values.service_id);
+      formData.append("canal", values.canal || "physique");
+      formData.append("confidentialite", values.confidentialite || "normale");
+      formData.append("priorite", values.priorite || "normale");
+      
+      // Vérifier que category et service_id sont des nombres valides
+      if (values.category) formData.append("category", values.category);
+      if (values.service_id) formData.append("service_impute", values.service_id);
+      
       formData.append("type", "entrant");
       formData.append("contenu_texte", values.contenu_texte || "");
       formData.append("ocr", "true");
@@ -425,20 +440,22 @@ const CourrierEntrants = () => {
         formData.append("pieces_jointes", uploadedFile);
       }
 
+      // Log pour déboguer
+      console.log("Payload envoyé:", Object.fromEntries(formData));
+
       const nouveauCourrier = await createCourrier(formData);
       message.success("Courrier créé avec succès grâce à l'IA !");
       setAiWorkflowVisible(false);
       loadCourriers();
-      navigate(`/traitement/courriers/${nouveauCourrier.id}`);
+      navigate(`/courriers-entrants/${nouveauCourrier.id}`);
     } catch (error) {
       console.error("Erreur création:", error);
       if (error.response?.data) {
-        const erreurs = error.response.data;
-        if (erreurs.expediteur_telephone) {
-          message.error(`Téléphone invalide : ${erreurs.expediteur_telephone[0]}`);
-        } else {
-          message.error("Erreur lors de la création du courrier");
-        }
+        console.log("Détails de l'erreur:", error.response.data);
+        const errorMsg = typeof error.response.data === 'object' 
+          ? JSON.stringify(error.response.data) 
+          : error.response.data;
+        message.error(`Erreur: ${errorMsg}`);
       } else {
         message.error("Erreur lors de la création du courrier");
       }

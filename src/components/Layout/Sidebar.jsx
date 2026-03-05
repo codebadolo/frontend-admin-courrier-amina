@@ -49,9 +49,9 @@ const Sidebar = ({ userRole, collapsed }) => {
     const baseStructure = [
       {
         key: "dashboard",
-        label: "Dashboard",
+        label: "Tableau de bord",
         icon: <DashboardOutlined />,
-        path: "/",
+        path: "/dashboard",
       },
       {
         key: "courriers",

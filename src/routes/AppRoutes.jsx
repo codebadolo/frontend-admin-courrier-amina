@@ -5,7 +5,7 @@ import { AuthContext } from "../contexts/AuthContext";
 import Layout from "../components/Layout/Layout";
 
 // Pages existantes
-import Dashboard from "../pages/Dashboard";
+// import Dashboard from "../pages/Dashboard";
 import Login from "../pages/Login";
 import CourrierEntrants from "../pages/courriers/CourrierEntrants";
 import CourriersSortants from "../pages/courriers/CourriersSortants";
@@ -37,11 +37,14 @@ import MesCourriersATraiter from "../pages/agent/MesCourriersATraiter";
 import CreerCourrierInterne from "../pages/courriers/CreerCourrierInterne";
 import DetailCourrierInterne from "../pages/courriers/DetailCourrierInterne";
 import TraitementCourrierInterne from "../pages/courriers/TraitementCourrierInterne";
+// import Dashboard from "../pages/Dashboard";
+import Dashboard from "../pages/Dashboard";
 
 const PrivateRoute = ({ children }) => {
   const { user } = useContext(AuthContext);
   return user ? children : <Navigate to="/login" replace />;
 };
+
 
 const AdminRoute = ({ children }) => {
   const { user } = useContext(AuthContext);
@@ -71,7 +74,7 @@ const AppRoutes = () => {
         <Route path="/traitement/dashboard" element={<TraitementDashboard />} />
         <Route path="/traitement/courriers" element={<TraitementCourrierList />} />
         <Route path="/traitement/courriers/:id" element={<TraitementCourrierDetail />} />
-        <Route path="/chef-service/dashboard" element={<ChefServiceDashboard />} />
+        {/* <Route path="/chef-service/dashboard" element={<ChefServiceDashboard />} /> */}
         <Route path="/assignation" element={<ChefServiceDashboard />} />
         <Route path="/services" element={<ServiceManagement/>}/>
         <Route path="/traitement/courriers/:id/analyse" element={<AnalyseCourrier />} />
@@ -80,14 +83,12 @@ const AppRoutes = () => {
         <Route path="/courriers-sortants/redaction" element={<RedactionCourrierSortant />} />
         <Route path="/courriers-sortants/redaction/:id" element={<RedactionCourrierSortant />} />
         <Route path="/mes-courriers-a-traiter" element={<MesCourriersATraiter />} />
-        {/* <Route path="/courriers-internes" element={<ListeCourriersInternes />} /> */}
         <Route path="/courriers-internes/creer" element={<CreerCourrierInterne />} />
         <Route path="/courriers-internes/:id" element={<DetailCourrierInterne />} />
         <Route path="/courriers-internes/:id/traitement" element={<TraitementCourrierInterne />} />
+        {/* <Route path="/dashboard" element={<Dashboard />} /> */}
         {/* Route spécifique admin */}
-        <Route 
-          path="/admin-dashboard" 
-          element={
+        <Route path="/admin-dashboard" element={
             <AdminRoute>
               <DashboardAdmin />
             </AdminRoute>
