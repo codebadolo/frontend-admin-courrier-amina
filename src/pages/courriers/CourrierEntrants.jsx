@@ -1,3 +1,4 @@
+// src/pages/courriers/CourrierEntrants.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
@@ -663,13 +664,13 @@ const CourrierEntrants = () => {
         >
           Transcrire avec Gemini
         </Button>
-        <Button
+        {/* <Button
           type="primary"
           onClick={() => setAiWorkflowStep(1)}
           disabled={!uploadedFile}
         >
           Continuer vers l'analyse (IA actuelle)
-        </Button>
+        </Button> */}
       </div>
     </div>
   );

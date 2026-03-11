@@ -6,7 +6,8 @@ import {
   Descriptions, Tag, Card, Row, Col, Spin, Timeline,
   Button, Space, Divider, List, Avatar, Badge, 
   Table, Progress, Typography, Alert, Tooltip, Tabs, Breadcrumb,
-  Statistic, Steps, Modal, message, Input, Collapse
+  Statistic, Steps, Modal, message, Input, Collapse, Form,
+  Upload
 } from "antd";
 import {
   EyeOutlined, DownloadOutlined, FileOutlined, ClockCircleOutlined,
@@ -19,7 +20,8 @@ import {
   SettingOutlined, DatabaseOutlined, NumberOutlined, 
   CopyOutlined as CopyIcon, InfoOutlined, FilePdfOutlined,
   FileImageOutlined, FileWordOutlined, FileExcelOutlined,
-  ToolOutlined, SendOutlined, RobotOutlined
+  ToolOutlined, SendOutlined, RobotOutlined,
+  UploadOutlined
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -31,12 +33,17 @@ import {
 } from "../../services/courrierService";
 import { traitementSerice } from "../../services/traitementService";
 import AffectationMembreModal from "../chefServices/AffectationMembreModal";
+import axios from "axios";
 
 dayjs.extend(relativeTime);
 dayjs.locale('fr');
 
 const { Title, Text, Paragraph } = Typography;
 const { Panel } = Collapse;
+const { TabPane } = Tabs;
+const { TextArea } = Input;
+
+const API_BASE = "http://localhost:8000/api";
 
 const CourrierEntrantDetail = () => {
   const { id } = useParams();
@@ -49,6 +56,12 @@ const CourrierEntrantDetail = () => {
   const [showAffectationModal, setShowAffectationModal] = useState(false);
   const [courrierInfo, setCourrierInfo] = useState(null);
   const [userRole, setUserRole] = useState(localStorage.getItem('userRole'));
+
+  // États pour l'upload
+  const [uploadModalVisible, setUploadModalVisible] = useState(false);
+  const [uploadForm] = Form.useForm();
+  const [uploading, setUploading] = useState(false);
+  const [fileList, setFileList] = useState([]);
 
   // Extraire l'ID numérique
   const extractNumericId = (idParam) => {
@@ -78,18 +91,7 @@ const CourrierEntrantDetail = () => {
       const courrierData = await getCourrierDetail(numericId);
       setCourrier(courrierData);
 
-      if (courrierData.pieces_jointes?.length) {
-        setPiecesJointes(courrierData.pieces_jointes);
-      } else {
-        try {
-          const pieces = await getPiecesJointes(numericId);
-          setPiecesJointes(pieces);
-        } catch (pieceError) {
-          console.log("Courrier chargé :", courrierData);
-          console.log("Contenu texte :", courrierData.contenu_texte); 
-          console.warn("Erreur chargement pièces jointes:", pieceError);
-        }
-      }
+      await loadPiecesJointes();
 
       // Mettre à jour le rôle si nécessaire
       const role = localStorage.getItem('userRole');
@@ -110,6 +112,15 @@ const CourrierEntrantDetail = () => {
       setCourrier(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPiecesJointes = async () => {
+    try {
+      const pieces = await getPiecesJointes(numericId);
+      setPiecesJointes(pieces);
+    } catch (error) {
+      console.warn("Erreur chargement pièces jointes:", error);
     }
   };
 
@@ -195,6 +206,49 @@ const CourrierEntrantDetail = () => {
     
     const allowedStatuses = ['recu', 'impute', 'traitement'];
     return allowedStatuses.includes(courrier?.statut);
+  };
+
+  // Fonction de normalisation pour le champ Upload
+  const normFile = (e) => {
+    if (Array.isArray(e)) return e;
+    return e?.fileList;
+  };
+
+  const handleUpload = async () => {
+    if (fileList.length === 0) {
+      message.error("Veuillez sélectionner un fichier");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("courrier", numericId);
+    formData.append("fichier", fileList[0].originFileObj);
+    
+    const description = uploadForm.getFieldValue("description");
+    if (description) {
+      formData.append("description", description);
+    }
+
+    setUploading(true);
+    try {
+      const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
+      await axios.post(`${API_BASE}/courriers/pieces-jointes/`, formData, {
+        headers: {
+          Authorization: `Token ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      message.success("Pièce jointe ajoutée avec succès");
+      setUploadModalVisible(false);
+      setFileList([]);
+      uploadForm.resetFields();
+      await loadPiecesJointes();
+    } catch (error) {
+      console.error("Erreur upload:", error);
+      message.error("Erreur lors de l'upload");
+    } finally {
+      setUploading(false);
+    }
   };
 
   if (loading) return (
@@ -392,7 +446,7 @@ const CourrierEntrantDetail = () => {
                   </Button>
                 }
                 
-                {/* Bouton Affecter - pour les chefs UNIQUEMENT - VERSION CORRIGÉE */}
+                {/* Bouton Affecter - pour les chefs UNIQUEMENT */}
                 {userRole === 'chef' && courrier?.service_actuel && (
                   <Button 
                     type="primary" 
@@ -417,6 +471,10 @@ const CourrierEntrantDetail = () => {
                 <Button type="primary" icon={<PrinterOutlined />} onClick={() => window.print()}>
                   Imprimer
                 </Button>
+                {/* Bouton Upload */}
+                <Tooltip title="Ajouter une pièce jointe">
+                  <Button icon={<UploadOutlined />} onClick={() => setUploadModalVisible(true)} />
+                </Tooltip>
               </Space>
 
               <Space wrap style={{ marginTop: '16px' }}>
@@ -476,45 +534,94 @@ const CourrierEntrantDetail = () => {
         )}
       </Card>
 
-      {/* CONTENU DU COURRIER */}
-      {courrier.contenu_texte && (
-        <div style={{ backgroundColor: '#fafafa', borderRadius: '8px', padding: '24px', marginBottom: '24px', border: '1px solid #f0f0f0' }}>
-          <Title level={4}><FileTextOutlined /> Contenu du courrier</Title>
-          <div style={{ padding: '20px', backgroundColor: '#fff', borderRadius: '6px', border: '1px solid #f0f0f0', maxHeight: '600px', overflowY: 'auto', height : '' }}>
-            <Paragraph style={{ whiteSpace: 'pre-wrap', margin: 0, lineHeight: '1.6' }}>{courrier.contenu_texte}</Paragraph>
-          </div>
-        </div>
-      )}
-
-      {/* PIÈCES JOINTES */}
-      {piecesJointes.length > 0 && (
-        <div style={{ backgroundColor: '#fafafa', borderRadius: '8px', padding: '24px', marginBottom: '24px', border: '1px solid #f0f0f0' }}>
-          <Title level={4}><PaperClipOutlined /> Pièces jointes ({piecesJointes.length})</Title>
-          <List
-            dataSource={piecesJointes}
-            renderItem={(piece) => (
-              <List.Item style={{ padding: '12px', backgroundColor: '#fff', marginBottom: '8px', borderRadius: '6px', border: '1px solid #f0f0f0' }}
-                actions={[
-                  <Button key="view" icon={<EyeOutlined />} size="small" onClick={() => window.open(piece.fichier, '_blank')}>Voir</Button>,
-                  <Button key="download" icon={<DownloadOutlined />} size="small" onClick={() => handleDownloadPiece(piece)}>Télécharger</Button>
-                ]}
-              >
-                <List.Item.Meta
-                  avatar={<Avatar icon={getFileIcon(piece.fichier_nom)} />}
-                  title={piece.fichier_nom || piece.fichier?.split('/').pop()}
-                  description={
-                    <Space direction="vertical" size={2}>
-                      <Text type="secondary">Taille: {(piece.fichier_taille / 1024).toFixed(1)} KB</Text>
-                      {piece.description && <Text type="secondary">{piece.description}</Text>}
-                      {piece.date_upload && <Text type="secondary" style={{ fontSize: '12px' }}>Uploadé le {dayjs(piece.date_upload).format('DD/MM/YYYY HH:mm')}</Text>}
-                    </Space>
-                  }
-                />
-              </List.Item>
+      {/* Onglets : Transcription et Document original */}
+      <Card style={{ marginBottom: 24, borderRadius: 8 }}>
+        <Tabs defaultActiveKey="transcription">
+          <TabPane tab="Transcription texte" key="transcription">
+            {courrier.contenu_texte ? (
+              <div style={{ 
+                whiteSpace: 'pre-wrap', 
+                background: '#fafafa', 
+                padding: 20, 
+                borderRadius: 6, 
+                border: '1px solid #f0f0f0',
+                maxHeight: 600,
+                overflowY: 'auto'
+              }}>
+                {courrier.contenu_texte}
+              </div>
+            ) : (
+              <Alert message="Aucune transcription disponible" type="info" showIcon />
             )}
-          />
-        </div>
-      )}
+          </TabPane>
+          <TabPane tab="Document original" key="original">
+            {piecesJointes.length > 0 ? (
+              <List
+                dataSource={piecesJointes}
+                renderItem={(piece) => {
+                  const fileExt = piece.fichier_nom?.split('.').pop()?.toLowerCase();
+                  const isImage = ['jpg', 'jpeg', 'png', 'gif', 'bmp'].includes(fileExt);
+                  const isPdf = fileExt === 'pdf';
+                  const fileUrl = piece.fichier_url || `${API_BASE}${piece.fichier}`;
+
+                  return (
+                    <Card 
+                      key={piece.id} 
+                      size="small" 
+                      style={{ marginBottom: 16 }}
+                      extra={
+                        <Space>
+                          <Button icon={<EyeOutlined />} onClick={() => window.open(fileUrl, '_blank')}>
+                            Ouvrir
+                          </Button>
+                          <Button icon={<DownloadOutlined />} onClick={() => handleDownloadPiece(piece)}>
+                            Télécharger
+                          </Button>
+                        </Space>
+                      }
+                    >
+                      <List.Item.Meta
+                        avatar={<Avatar icon={getFileIcon(piece.fichier_nom)} />}
+                        title={piece.fichier_nom}
+                        description={
+                          <Space direction="vertical">
+                            <Text type="secondary">
+                              Taille: {piece.fichier_taille ? (piece.fichier_taille / 1024).toFixed(1) + ' KB' : 'Inconnue'}
+                            </Text>
+                            {piece.description && <Text>{piece.description}</Text>}
+                          </Space>
+                        }
+                      />
+                      {isImage && (
+                        <div style={{ marginTop: 16, textAlign: 'center' }}>
+                          <img 
+                            src={fileUrl} 
+                            alt={piece.fichier_nom} 
+                            style={{ maxWidth: '100%', maxHeight: 400, objectFit: 'contain' }} 
+                          />
+                        </div>
+                      )}
+                      {isPdf && (
+                        <div style={{ marginTop: 16, height: 500 }}>
+                          <iframe
+                            src={`${fileUrl}#toolbar=0&navpanes=0`}
+                            title={piece.fichier_nom}
+                            width="100%"
+                            height="100%"
+                            style={{ border: 'none' }}
+                          />
+                        </div>
+                      )}
+                    </Card>
+                  );
+                }}
+              />
+            ) : (
+              <Alert message="Aucun document original disponible" type="info" showIcon />
+            )}
+          </TabPane>
+        </Tabs>
+      </Card>
 
       {/* MODAL QR CODE */}
       <Modal title={<Space><QrcodeOutlined /> QR Code du courrier</Space>} open={qrModalVisible} onCancel={() => setQrModalVisible(false)} footer={null} width={400}>
@@ -541,6 +648,46 @@ const CourrierEntrantDetail = () => {
         </Space>
       </Modal>
 
+      {/* MODAL D'UPLOAD */}
+      <Modal
+        title="Ajouter une pièce jointe"
+        open={uploadModalVisible}
+        onCancel={() => {
+          setUploadModalVisible(false);
+          setFileList([]);
+          uploadForm.resetFields();
+        }}
+        footer={[
+          <Button key="cancel" onClick={() => setUploadModalVisible(false)}>
+            Annuler
+          </Button>,
+          <Button key="upload" type="primary" loading={uploading} onClick={handleUpload}>
+            Uploader
+          </Button>,
+        ]}
+      >
+        <Form form={uploadForm} layout="vertical">
+          <Form.Item
+            label="Fichier"
+            required
+            tooltip="Formats acceptés : PDF, images, Word, Excel"
+          >
+            <Upload
+              beforeUpload={() => false}
+              fileList={fileList}
+              onChange={({ fileList }) => setFileList(fileList)}
+              maxCount={1}
+              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+            >
+              <Button icon={<UploadOutlined />}>Sélectionner un fichier</Button>
+            </Upload>
+          </Form.Item>
+          <Form.Item name="description" label="Description (optionnel)">
+            <Input.TextArea rows={2} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
       {/* Modal d'affectation */}
       <AffectationMembreModal
         visible={showAffectationModal}
@@ -550,7 +697,7 @@ const CourrierEntrantDetail = () => {
         onSuccess={() => {
           message.success("Courrier affecté avec succès");
           setShowAffectationModal(false);
-          loadCourrierDetail(); // Recharger les détails pour voir l'assignation
+          loadCourrierDetail();
         }}
       />
     </div>
